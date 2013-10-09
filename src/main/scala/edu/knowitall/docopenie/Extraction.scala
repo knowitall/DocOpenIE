@@ -5,6 +5,18 @@ import edu.knowitall.tool.typer.Type
 import edu.knowitall.tool.chunk.ChunkedToken
 import edu.knowitall.tool.parse.graph.DependencyGraph
 
+trait Link {
+  def name: String
+  def score: Double
+}
+
+trait TipsterGazetteerLink extends Link
+
+trait FreeBaseLink extends Link {
+  def id: String
+  def types: Set[String]
+}
+
 trait Document {
   def ids: String
   def sentences: IndexedSeq[Sentence]
