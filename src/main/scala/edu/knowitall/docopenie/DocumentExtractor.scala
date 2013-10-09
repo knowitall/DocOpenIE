@@ -1,21 +1,13 @@
 package edu.knowitall.docopenie
 
-trait SentenceExtractor extends (Sentence => Seq[Extraction])
-trait Linker extends (MentionChain => Seq[Link])
-trait Resolver extends (Document => Seq[MentionChain])
-trait SentenceTagger extends (Sentence => TaggedSentence)
+trait SentenceTagger extends (Sentence => Set[SentenceTag])
+
+trait SentenceExtractor extends (Sentence => Set[Extraction])
+
+trait Resolver extends (Document => Set[CorefCluster])
 
 abstract class DocumentExtractor(
     sentenceExtractor: SentenceExtractor,
-    linker: Linker,
     resolver: Resolver,
     tagger: SentenceTagger)
-  extends (Document => ExtractedDocument) {
-
-  def apply(document: Document): ExtractedDocument
-//    val taggedSentences = document.sentences map tagger
-//    val mentionChains = resolver(document)
-//    val links = mentionChains.flatMap(linker)
-//    val extractions = document.sentences flatMap sentenceExtractor
-// TODO: Linker or Coref first? Chicken or Egg? Read NECo paper.
-}
+  extends (Document => ExtractedDocument)
