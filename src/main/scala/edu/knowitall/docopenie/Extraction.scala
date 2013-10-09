@@ -18,7 +18,6 @@ trait FreeBaseLink extends Link {
 }
 
 trait Document {
-  def ids: String
   def sentences: IndexedSeq[Sentence]
 }
 
@@ -55,6 +54,7 @@ trait Extraction {
   def arg1: Argument
   def rel:  Relation
   def arg2s: Set[Argument]
+  def sentence: Sentence
   def score: Double
 }
 
