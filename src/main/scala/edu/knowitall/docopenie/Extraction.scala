@@ -21,7 +21,7 @@ trait Document {
   def sentences: IndexedSeq[Sentence]
 }
 
-trait Sentence {def apply(document: Document): ExtractedDocument
+trait Sentence {
   def text: String
   def chunkedTokens: Seq[ChunkedToken]
   def dependencyGraph: DependencyGraph
