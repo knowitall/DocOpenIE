@@ -9,15 +9,16 @@ import edu.knowitall.repr.coref.Linked
 import edu.knowitall.repr.sentence.Sentence
 import edu.knowitall.repr.sentence.Extracted
 
-trait CorefResolver[M <: Mention] {
-  def resolve(doc: Document): Seq[MentionCluster[M]]
+trait CorefResolver {
+
+  type mention <: Mention
+
+  type document <: Document
+
+  def resolve(doc: Document): Seq[MentionCluster[mention]]
 }
 
-trait LinkedCorefResolver extends CorefResolver[Mention with Linked] {
-  def resolve(doc: Document): Seq[MentionCluster[Mention with Linked]]
-}
-
-trait KBPRuleResolver extends LinkedCorefResolver {
+trait KBPRuleResolver extends CorefResolver {
 
   type LinkedMention = Mention with Linked
 
@@ -27,5 +28,7 @@ trait KBPRuleResolver extends LinkedCorefResolver {
 
   type SentencedResolvedDoc = Document with CorefResolved[LinkedMention] with Sentenced[ExtractedSentence]
 
-  def resolve(doc: SentencedResolvedDoc): Seq[LinkedMentionCluster]
+  type document = SentencedResolvedDoc
+
+  type mention = LinkedMention
 }

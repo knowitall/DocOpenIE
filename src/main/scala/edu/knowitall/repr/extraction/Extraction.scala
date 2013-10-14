@@ -2,13 +2,14 @@ package edu.knowitall.repr.extraction
 
 import edu.knowitall.tool.typer.Type
 import edu.knowitall.repr.coref.Mention
+import edu.knowitall.collection.immutable.Interval
 
 trait Argument extends Mention {
-  override val name = "Argument"
+  def tokenInterval: Interval
 }
 
 trait Relation extends Mention {
-  override val name = "Relation"
+  def tokenInterval: Interval
 }
 
 trait Extraction {

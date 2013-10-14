@@ -16,5 +16,5 @@ trait Tagger extends Tagged {
 
   def tagger: Typer[token]
 
-  override lazy val tags: Set[Type] = tagger.apply(tokens).toSet
+  override lazy val tags: Seq[Type] = tagger.apply(tokens)
 }
