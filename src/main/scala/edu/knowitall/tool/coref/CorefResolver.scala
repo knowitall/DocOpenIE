@@ -15,7 +15,7 @@ trait CorefResolver {
 
   type document <: Document
 
-  def resolve(doc: Document): Seq[MentionCluster[mention]]
+  def resolve(doc: document): Seq[MentionCluster[mention]]
 }
 
 trait KBPRuleResolver extends CorefResolver {
