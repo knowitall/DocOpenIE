@@ -21,8 +21,8 @@ trait OpenIEExtracted extends Extracted {
   lazy val srlExtrs = srlie(this.dgraph)
   lazy val relnounExtrs = relnoun(this.lemmatizedTokens)
 
-  private lazy val relnounConverted = relnounExtrs map { re => Extraction.fromRelnoun(re, relnounConf(re)) }
-  private lazy val srlieConverted = srlExtrs map { se => Extraction.fromSrlie(se, srlieConf(se)) }
+  private def relnounConverted = relnounExtrs map { re => Extraction.fromRelnoun(re, relnounConf(re)) }
+  private def srlieConverted = srlExtrs map { se => Extraction.fromSrlie(se, srlieConf(se)) }
 
   lazy val extractions = relnounConverted ++ srlieConverted
 }

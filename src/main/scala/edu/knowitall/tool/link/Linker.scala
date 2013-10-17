@@ -28,7 +28,7 @@ trait OpenIELinked extends LinkedDocument[FreeBaseLink] {
   /**
    * Pairs of (argument, context)
    */
-  private val argContexts = this.sentences.flatMap { s =>
+  lazy val argContexts = this.sentences.flatMap { s =>
     val args = s.sentence.extractions.flatMap(e => e.arg1 +: e.arg2s)
     args.map(a => (a, s))
   }
@@ -36,9 +36,9 @@ trait OpenIELinked extends LinkedDocument[FreeBaseLink] {
   def linker: EntityLinker
 
   lazy val links: Seq[FreeBaseLink] = argContexts.flatMap { case (arg, context) =>
-    val elink = Option(linker.getBestEntity(arg.text, Seq(context.sentence.text)))
+    val elink = linker.getBestEntity(arg.text, Seq(context.sentence.text))
     val linkedMention = elink.map { l =>
-      FreeBaseLink(arg.text, arg.offset, l.entity.name, l.score, l.entity.fbid, l.entity.retrieveTypes().asScala.toSeq)
+      FreeBaseLink(arg.text, arg.offset, l.entity.name, l.combinedScore, l.docSimScore, l.candidateScore, l.inlinks, l.entity.fbid, l.entity.retrieveTypes().asScala.toSeq)
     }
     linkedMention.toSeq
   }
