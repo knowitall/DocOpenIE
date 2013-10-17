@@ -14,6 +14,7 @@ scalaVersion <<= crossScalaVersions { (vs: Seq[String]) => vs.head }
 
 libraryDependencies ++= Seq(
   "edu.washington.cs.knowitall.openie" %% "openie" % "4.1",
+  "edu.washington.cs.knowitall.openie" %% "openie-linker" % "1.1-SNAPSHOT",
   "edu.washington.cs.knowitall.nlptools" %% "nlptools-chunk-opennlp" % "2.4.4-SNAPSHOT",
   "edu.washington.cs.knowitall.nlptools" %% "nlptools-parse-clear" % "2.4.4-SNAPSHOT",
   "edu.washington.cs.knowitall.taggers" %% "taggers-core" % "0.3")

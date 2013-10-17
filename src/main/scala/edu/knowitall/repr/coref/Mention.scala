@@ -1,18 +1,10 @@
 package edu.knowitall.repr.coref
 
 import edu.knowitall.collection.immutable.Interval
-import edu.knowitall.repr.link.Link
 import edu.knowitall.repr.document.Document
+import edu.knowitall.repr.tag.Tag
 
-trait Mention {
-  def text: String
-  def offset: Int
-}
-
-trait Linked {
-  this: Mention =>
-  def links: Seq[Link]
-}
+trait Mention extends Tag
 
 trait MentionCluster[M <: Mention] {
   def mentions: Set[M]

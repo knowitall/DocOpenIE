@@ -5,9 +5,10 @@ import edu.knowitall.repr.document.Sentenced
 import edu.knowitall.repr.coref.MentionCluster
 import edu.knowitall.repr.coref.Mention
 import edu.knowitall.repr.coref.CorefResolved
-import edu.knowitall.repr.coref.Linked
+import edu.knowitall.repr.link.Link
+import edu.knowitall.tool.link.Linker
 import edu.knowitall.repr.sentence.Sentence
-import edu.knowitall.repr.sentence.Extracted
+import edu.knowitall.tool.sentence.OpenIEExtracted
 
 trait CorefResolver {
 
@@ -18,17 +19,17 @@ trait CorefResolver {
   def resolve(doc: document): Seq[MentionCluster[mention]]
 }
 
-trait KBPRuleResolver extends CorefResolver {
+trait KBPRuleResolver extends CorefResolver with Linker {
 
-  type LinkedMention = Mention with Linked
+  // the rule resolver takes as input a document that:
+  type document = Document with
+  // already has some coref info, such as from stanford
+       CorefResolved[Mention] with
+  // and has been extracted via Open IE.
+       Sentenced[Sentence with OpenIEExtracted]
 
-  type LinkedMentionCluster = MentionCluster[LinkedMention]
+  type mention = Mention
 
-  type ExtractedSentence = Sentence with Extracted
-
-  type SentencedResolvedDoc = Document with CorefResolved[LinkedMention] with Sentenced[ExtractedSentence]
-
-  type document = SentencedResolvedDoc
-
-  type mention = LinkedMention
+  // the link type may need to stay general if we're going to return freebase, nell, gazetteer links, etc...
+  type link = Link
 }
