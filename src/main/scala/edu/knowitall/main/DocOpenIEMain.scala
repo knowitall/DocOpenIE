@@ -16,15 +16,17 @@ import edu.knowitall.repr.document.Document
 import edu.knowitall.repr.document.Sentenced
 import edu.knowitall.tool.document.OpenIEDocumentExtractor
 
+case class KbpDocument[D <: Document](val doc: D, val docId: String)
+
 object DocOpenIEMain {
 
   val kbpSentencer = Sentencer.defaultInstance
 
   val docExtractor = new OpenIEDocumentExtractor()
 
-/**
- * Usage: provide path to KBP sample documents.
- */
+ /**
+  * Usage: provide path to KBP sample documents.
+  */
   def main(args: Array[String]): Unit = {
 
     val docPath = new File(args(0))
@@ -35,22 +37,24 @@ object DocOpenIEMain {
 
     val procDocs = rawDocs map { case (file, doc) => (file, doc, processDoc(file, doc)) }
 
-    val sentencedDocuments = procDocs.map { case (file, rawDoc, procDoc) =>
+    val sentencedDocuments = procDocs.toSeq.take(1).map { case (file, rawDoc, procDoc) =>
       val text = rawDoc.getString
       val kbpSentences = kbpSentencer.convertToSentences(procDoc)
-      new Document(text) with Sentenced[Sentence] {
+      val doc = new Document(text) with Sentenced[Sentence] {
         override val sentences = kbpSentences.toStream.map { ks =>
           val sent = new Sentence(ks.text)
           DocumentSentence(sent, ks.offset)
         }
       }
+      KbpDocument(doc, procDoc.docIdLine.line)
     }
 
-    val extractedDocuments = sentencedDocuments map docExtractor.extract
+    val extractedDocuments = sentencedDocuments map (kd => kd.copy(doc=docExtractor.extract(kd.doc)))
 
-    extractedDocuments.foreach { ed =>
-      ed.links foreach println
-    }
+    val printer = new KbpDocPrinter(new java.io.PrintStream("./sample-out.txt"))
+
+    // print documents..
+    extractedDocuments.foreach(printer.print)
   }
 
   def processDoc(file: File, rawDoc: KbpRawDoc): KbpProcessedDoc = {
@@ -72,3 +76,4 @@ object DocOpenIEMain {
     docs.map((docFile, _))
   }
 }
+

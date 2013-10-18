@@ -8,10 +8,13 @@ import edu.knowitall.repr.document.DocumentSentence
 import edu.knowitall.repr.extraction.Extraction
 import edu.knowitall.repr.sentence.Parsed
 import edu.knowitall.repr.sentence.Chunked
+import edu.knowitall.repr.coref.CorefResolved
 import edu.knowitall.tool.sentence.OpenIEExtracted
 import edu.knowitall.repr.sentence.Lemmatized
 import edu.knowitall.tool.parse.ClearParser
 import edu.knowitall.tool.chunk.OpenNlpChunker
+import edu.knowitall.tool.coref.StanfordCorefResolver
+import edu.knowitall.tool.coref.Mention
 import edu.knowitall.tool.stem.MorphaStemmer
 import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.browser.entity.EntityLinker
@@ -23,6 +26,8 @@ class OpenIEDocumentExtractor {
   val chunker = new OpenNlpChunker()
   val stemmer = new MorphaStemmer()
   val entityLinker = new EntityLinker(new File("/scratch/"))
+  val stanfordResolver = new StanfordCorefResolver()
+
 
   def prepSentence(s: Sentence): Sentence with OpenIEExtracted = {
     val parse = parser(s.text)
@@ -35,13 +40,14 @@ class OpenIEDocumentExtractor {
     }
   }
 
-  def extract(d: Document with Sentenced[_ <: Sentence]): Document with OpenIELinked with Sentenced[Sentence with OpenIEExtracted] = {
+  def extract(d: Document with Sentenced[_ <: Sentence]): Document with OpenIELinked with CorefResolved[Mention] with Sentenced[Sentence with OpenIEExtracted] = {
 
     val preppedSentences = d.sentences.map { case DocumentSentence(sentence, offset) =>
       DocumentSentence(prepSentence(sentence), offset)
     }
 
-    new Document(d.text) with OpenIELinked with Sentenced[Sentence with OpenIEExtracted] {
+    new Document(d.text) with OpenIELinked with CorefResolved[Mention] with Sentenced[Sentence with OpenIEExtracted] {
+      val clusters = stanfordResolver.resolve(d)
       val sentences = preppedSentences
       val linker = entityLinker
     }

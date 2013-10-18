@@ -13,7 +13,7 @@ import edu.knowitall.chunkedextractor.confidence.RelnounConfidenceFunction
 import edu.knowitall.srlie.confidence.SrlConfidenceFunction
 import edu.knowitall.repr.extraction.Extraction
 
-trait OpenIEExtracted extends Extracted {
+trait OpenIEExtracted extends Extracted with Lemmatized with Chunked with Parsed {
   this: Sentence with Lemmatized with Chunked with Parsed  =>
 
   import OpenIEExtracted._
