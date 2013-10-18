@@ -13,7 +13,6 @@ object BestEntityMention{
 	  BestEntityMentionImpl(text,offset,bestEntityMention)
   }
 }
-
 trait BestEntityMentionResolvedDocument[B <: BestEntityMention]{
   this: Document =>
     

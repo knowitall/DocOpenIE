@@ -11,10 +11,11 @@ import edu.knowitall.repr.link.FreeBaseLink
 import edu.knowitall.tool.sentence.OpenIEExtracted
 import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.tool.coref.Mention
+import edu.knowitall.tool.bestentitymention.BestEntityMentionsFound
 
 class KbpDocPrinter(out: java.io.PrintStream) {
 
-  def print(kbpDoc: KbpDocument[Document with OpenIELinked with CorefResolved[Mention] with Sentenced[Sentence with OpenIEExtracted]]): Unit = {
+  def print(kbpDoc: KbpDocument[Document with OpenIELinked with CorefResolved[Mention] with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound]): Unit = {
 
     val KbpDocument(doc, docId) = kbpDoc
 
