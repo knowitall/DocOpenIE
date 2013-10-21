@@ -48,7 +48,7 @@ object DocOpenIEMain {
       }
       KbpDocument(doc, procDoc.docIdLine.line)
     }
-
+    
     val extractedDocuments = sentencedDocuments map (kd => kd.copy(doc=docExtractor.extract(kd.doc)))
 
     val printer = new KbpDocPrinter(new java.io.PrintStream("./sample-out.txt"))
