@@ -1,7 +1,7 @@
 package edu.knowitall.repr.extraction
 
 import edu.knowitall.repr.tag.Tag
-import edu.knowitall.repr.coref.Mention
+import edu.knowitall.tool.coref.Mention
 import edu.knowitall.collection.immutable.Interval
 import edu.knowitall.chunkedextractor.BinaryExtractionInstance
 import edu.knowitall.tool.chunk.ChunkedToken

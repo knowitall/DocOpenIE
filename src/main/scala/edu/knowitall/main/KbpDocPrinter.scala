@@ -11,10 +11,11 @@ import edu.knowitall.repr.link.FreeBaseLink
 import edu.knowitall.tool.sentence.OpenIEExtracted
 import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.tool.coref.Mention
+import edu.knowitall.tool.bestentitymention.BestEntityMentionsFound
 
 class KbpDocPrinter(out: java.io.PrintStream) {
 
-  def print(kbpDoc: KbpDocument[Document with OpenIELinked with CorefResolved[Mention] with Sentenced[Sentence with OpenIEExtracted]]): Unit = {
+  def print(kbpDoc: KbpDocument[Document with OpenIELinked with CorefResolved[Mention] with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound ]): Unit = {
 
     val KbpDocument(doc, docId) = kbpDoc
 
@@ -32,6 +33,14 @@ class KbpDocPrinter(out: java.io.PrintStream) {
     printLinks(doc)
     out.println("Coref Clusters:")
     printCorefClusters(doc)
+    out.println("Best Entity Mentions:")
+    printEntityMentions(doc)
+  }
+  
+  def printEntityMentions(doc: Document with BestEntityMentionsFound): Unit = {
+    for( bme <-doc.bestEntityMentions){
+      out.println(bme.offset + "\t" + bme.text + "\t" + bme.bestEntityMention)
+    }
   }
 
   def printCorefClusters(doc: Document with CorefResolved[Mention]): Unit = {
