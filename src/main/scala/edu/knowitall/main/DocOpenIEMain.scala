@@ -15,6 +15,8 @@ import edu.knowitall.repr.document.DocumentSentence
 import edu.knowitall.repr.document.Document
 import edu.knowitall.repr.document.Sentenced
 import edu.knowitall.tool.document.OpenIEDocumentExtractor
+import edu.knowitall.tool.document.OpenIEBaselineExtractor
+import edu.knowitall.tool.document.OpenIENoCorefDocumentExtractor
 
 case class KbpDocument[D <: Document](val doc: D, val docId: String)
 
@@ -37,7 +39,7 @@ object DocOpenIEMain {
 
     val procDocs = rawDocs map { case (file, doc) => (file, doc, processDoc(file, doc)) }
 
-    val sentencedDocuments = procDocs.toSeq.take(1).map { case (file, rawDoc, procDoc) =>
+    val sentencedDocuments = procDocs.toSeq.map { case (file, rawDoc, procDoc) =>
       val text = rawDoc.getString
       val kbpSentences = kbpSentencer.convertToSentences(procDoc)
       val doc = new Document(text) with Sentenced[Sentence] {
@@ -46,15 +48,26 @@ object DocOpenIEMain {
           DocumentSentence(sent, ks.offset)
         }
       }
-      KbpDocument(doc, procDoc.docIdLine.line)
+      KbpDocument(doc, procDoc.extractDocId.get)
     }
-    
+
     val extractedDocuments = sentencedDocuments map (kd => kd.copy(doc=docExtractor.extract(kd.doc)))
 
-    val printer = new KbpDocPrinter(new java.io.PrintStream("./sample-out.txt"))
+    val outDir = "./full-debug/"
+    val outDirFile = new File(outDir)
+    if (!outDirFile.exists()) outDirFile.mkdir()
 
     // print documents..
-    extractedDocuments.foreach(printer.print)
+
+
+
+    extractedDocuments.foreach { ed =>
+      using(new java.io.PrintStream(outDir + ed.docId + ".out.txt")) { psout =>
+        val evalPrinter = new EvaluationPrinter(psout)
+        evalPrinter.printColumnHeaderString()
+        evalPrinter.printFull(ed)
+      }
+    }
   }
 
   def processDoc(file: File, rawDoc: KbpRawDoc): KbpProcessedDoc = {

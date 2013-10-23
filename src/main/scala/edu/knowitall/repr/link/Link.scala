@@ -25,4 +25,31 @@ trait LinkedDocument[L <: Link] {
   this: Document =>
 
   def links: Seq[L]
+
+
+
+
+  /**
+   * Get links contained between the character interval
+   * defined by chStart (inclusive) and chEnd (exclusive)
+   */
+  def linksBetween(chStart: Int, chEnd: Int): Seq[L] = {
+    links.filter(l => l.offset >= chStart && (l.offset + l.text.length) <= chEnd)
+  }
+
+  /**
+   * Get links overlapping the character interval
+   * defined by chStart (inclusive) and chEnd (exclusive)
+   */
+  def linksIntersecting(chStart: Int, chEnd: Int): Seq[L] = {
+    links.filter(l => l.offset < chEnd && (l.offset + l.text.length) > chStart)
+  }
+
+  /**
+   * Get links exactly matching the character interval
+   * defined by chStart (inclusive) and chEnd (exclusive)
+   */
+  def linksExact(chStart: Int, chEnd: Int): Seq[L] = {
+    links.filter(l => l.offset == chStart && (l.offset + l.text.length) == chEnd)
+  }
 }
