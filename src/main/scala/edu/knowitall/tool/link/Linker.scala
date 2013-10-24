@@ -25,7 +25,9 @@ trait Linker {
 
 
 trait OpenIELinked extends LinkedDocument[FreeBaseLink] {
-  this: Document with CorefResolved[Mention] with Sentenced[Sentence with OpenIEExtracted] =>
+  this: Document with Sentenced[Sentence with OpenIEExtracted] =>
+
+  val minCombinedScore = 4.5
 
   private case class Context(source: DocumentSentence[Sentence with OpenIEExtracted], extended: Seq[DocumentSentence[Sentence with OpenIEExtracted]]) {
     def fullText = (source +: extended).distinct.map(_.sentence.text)
@@ -46,8 +48,10 @@ trait OpenIELinked extends LinkedDocument[FreeBaseLink] {
     val args = s.sentence.extractions.flatMap(e => e.arg1 +: e.arg2s)
     args.map { a =>
       val ao = s.sentence.tokens(a.tokenIndices.head).offset + s.offset
-      val otherMentions = this.clustersAt(ao).flatMap(_.mentions)
-      val extended = otherMentions.map(_.offset).flatMap(sentenceAt).toList
+      val extended = if (this.isInstanceOf[CorefResolved[_ <: Mention]]) {
+        val otherMentions = this.asInstanceOf[CorefResolved[_ <: Mention]].clustersAt(ao).flatMap(_.mentions)
+        otherMentions.map(_.offset).flatMap(sentenceAt).toList
+      } else Nil
       val context = Context(s, extended)
       (a, context)
     }
@@ -57,7 +61,7 @@ trait OpenIELinked extends LinkedDocument[FreeBaseLink] {
   def linker: EntityLinker
 
   lazy val links: Seq[FreeBaseLink] = argContexts.flatMap { case (arg, context) =>
-    val elink = linker.getBestEntity(arg.text, context.fullText)
+    val elink = linker.getBestEntity(arg.text, context.fullText).filter(_.combinedScore >= minCombinedScore)
     val linkedMention = elink.map { l =>
       val offset = context.source.sentence.tokens(arg.tokenIndices.head).offset + context.source.offset
       FreeBaseLink(arg.text, offset, l.entity.name, l.combinedScore, l.docSimScore, l.candidateScore, l.inlinks, l.entity.fbid, l.entity.retrieveTypes().asScala.toSeq)

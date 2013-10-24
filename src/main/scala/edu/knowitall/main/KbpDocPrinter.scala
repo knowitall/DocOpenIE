@@ -13,6 +13,9 @@ import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.tool.coref.Mention
 import edu.knowitall.tool.bestentitymention.BestEntityMentionsFound
 
+/**
+ * Code for producing human readable sample output.
+ */
 class KbpDocPrinter(out: java.io.PrintStream) {
 
   def print(kbpDoc: KbpDocument[Document with OpenIELinked with CorefResolved[Mention] with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound ]): Unit = {
@@ -36,7 +39,7 @@ class KbpDocPrinter(out: java.io.PrintStream) {
     out.println("Best Entity Mentions:")
     printEntityMentions(doc)
   }
-  
+
   def printEntityMentions(doc: Document with BestEntityMentionsFound): Unit = {
     for( bme <-doc.bestEntityMentions){
       out.println(bme.offset + "\t" + bme.text + "\t" + bme.bestEntityMention)

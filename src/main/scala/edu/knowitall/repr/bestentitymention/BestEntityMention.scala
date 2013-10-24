@@ -15,6 +15,31 @@ object BestEntityMention{
 }
 trait BestEntityMentionResolvedDocument[B <: BestEntityMention]{
   this: Document =>
-    
+
   def bestEntityMentions: Seq[B];
+
+
+  /**
+   * Get links contained between the character interval
+   * defined by chStart (inclusive) and chEnd (exclusive)
+   */
+  def bestEntityMentionsBetween(chStart: Int, chEnd: Int): Seq[B] = {
+    bestEntityMentions.filter(l => l.offset >= chStart && (l.offset + l.text.length) <= chEnd)
+  }
+
+  /**
+   * Get links overlapping the character interval
+   * defined by chStart (inclusive) and chEnd (exclusive)
+   */
+  def bestEntityMentionsIntersecting(chStart: Int, chEnd: Int): Seq[B] = {
+    bestEntityMentions.filter(l => l.offset < chEnd && (l.offset + l.text.length) > chStart)
+  }
+
+  /**
+   * Get links exactly matching the character interval
+   * defined by chStart (inclusive) and chEnd (exclusive)
+   */
+  def bestEntityMentionsExact(chStart: Int, chEnd: Int): Seq[B] = {
+    bestEntityMentions.filter(l => l.offset == chStart && (l.offset + l.text.length) == chEnd)
+  }
 }

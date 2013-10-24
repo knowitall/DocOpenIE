@@ -18,15 +18,15 @@ import java.io.File
 import scala.util.matching.Regex
 
 trait BestEntityMentionFinder{
-  
+
   def findBestEntity(entityName: String, entityType: String, begOffset: Int, docText:String, namedEntityCollection: NamedEntityCollection): String
-  
+
 }
 
 
 trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument[BestEntityMention]{
   this: Document  =>
- 
+
   private lazy val NERAnnotator = {
     	val nerProperties = new Properties();
 		nerProperties.put("annotators", "tokenize, cleanxml, ssplit, pos, lemma, ner");
@@ -47,7 +47,7 @@ trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument[BestEnti
     val people = getListOfNERType("PERSON")
     NamedEntityCollection(organizations,locations,people)
   }
-  
+
   private def getListOfNERType(nerType: String) = {
     var nerTypes = List[String]()
     val sentences = scala.collection.JavaConversions.collectionAsScalaIterable(this.NERAnnotatedDoc.get(classOf[CoreAnnotations.SentencesAnnotation]))
@@ -65,7 +65,7 @@ trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument[BestEnti
         tokIndex += 1
       }
       if(!relevantTokens.isEmpty){
-        var lastTok = relevantTokens.head        
+        var lastTok = relevantTokens.head
         var nerToks = List(lastTok)
         for(tok <- relevantTokens.tail){
           if(lastTok.index() == (tok.index()-1)){
@@ -86,7 +86,7 @@ trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument[BestEnti
     }
     nerTypes.toList
   }
-  
+
   private lazy val documentEntities = {
     var entities = List[Entity]()
     val sentences = scala.collection.JavaConversions.collectionAsScalaIterable(this.NERAnnotatedDoc.get(classOf[CoreAnnotations.SentencesAnnotation]))
@@ -126,9 +126,9 @@ trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument[BestEnti
     }
     entities.toList
   }
-  
+
   val bestEntityMentionFinder : BestEntityMentionFinder
-  
+
   //iterate over entities and use bestENtityMentionFinder.findBestEntity to
   // find the bestEntityMentions in the Document
   lazy val bestEntityMentions = {
@@ -139,7 +139,7 @@ trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument[BestEnti
 
 
 class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
-  println("Instantiating new BestEntityMentionFinderOriginalAlgorithm object")  
+  println("Instantiating new BestEntityMentionFinderOriginalAlgorithm object")
   //where the custom rules should go
   override def findBestEntity(entityName: String, entityType: String, begOffset: Int, docText:String, namedEntityCollection: NamedEntityCollection): String = {
     var alternateName = entityName
@@ -167,7 +167,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
     }
     alternateName
   }
-  
+
   private def sortCandidateStringsByProximity(rawDoc: String, candidateStrings: List[String], begOffset: Integer): List[String] =  {
     val entityPosition = begOffset
     val uniqueCandidateMap = candidateStrings.groupBy[String](f=> f)
@@ -185,17 +185,17 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
     }
     candidateDistanceTuples.toList.sortBy(f => f._2).map(x => x._1)
   }
-  
+
     private def findBestOrganizationString(originalName : String, candidateStrings: List[String], rawDoc: String, begOffset: Integer, namedEntities: NamedEntityCollection) :String = {
 	    val originalString = originalName
 	    val sortedCandidateStrings = sortCandidateStringsByProximity(rawDoc,candidateStrings,begOffset)
-	
-	
+
+
 	    try{
 	    val accronymRegex = new Regex("\\([^\\)\\(]{0,15}"+originalString+"[^\\)\\(]{0,15}\\)")
 	    //if the organization is an acronym
 	    if(originalString.forall(p => p.isUpper) || accronymRegex.findFirstIn(rawDoc).isDefined ){
-	            
+
 	      for(cs <- sortedCandidateStrings){
 	        val words = cs.split(" ").filter(p => {p(0).isUpper}).takeRight(originalString.length())
 	        var goodCandidate = true
@@ -219,7 +219,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
 		        }
 	        }
 	      }
-	      
+
 	      // if in parentheses and nothing was found...
 	      //val parenthesisRegexPattern = new Regex("([A-Z]\\w+ (\\w+ )*[A-Z]\\w+)[\\.\\s]*\\([^\\)\\(]{0,5}"+originalString+"[^\\)\\(]{0,5}\\)")
 	      val accRegexPattern = new Regex("(["+originalString(0).toUpper+originalString(originalString.length()-1).toUpper+"][\\S]+ ([\\S]+ ){0,2}[A-Z][\\S]+).{0,15}"+originalString)
@@ -231,33 +231,33 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
 	        }
 	        return expandedString
 	      }
-	      
+
 	    }
 	    }
 	    catch{
 	      case e: Exception => {
-	        
+
 	      }
 	    }
-	    
+
 	    //non caps organization, check if there is a longer string than the original
 	    //name with the original name as the rightmost word
-		var probablyOrganization = true  
+		var probablyOrganization = true
 	    var originalStringIsLocation = false
 	    val locations = namedEntities.locations
-		  
+
 	    for(loc <- locations){
 	      if(loc.contains(originalString)){
 	        originalStringIsLocation = true
 	      }
 	    }
-		  
+
 	    if(originalStringIsLocation){
 	      probablyOrganization = false
 	    }
-		
-		  
-		  
+
+
+
 	    if(probablyOrganization){
 	        //do this if original String is not refferring to a location
 	        for(cs <- candidateStrings){
@@ -270,17 +270,17 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
 	          }
 	        }
 	    }
-	    
+
 	    //finally check if the original string if prefix of an organization
 	    for(cs <- sortedCandidateStrings){
 	      if(cs.toLowerCase().startsWith(originalString.toLowerCase()) && cs.length() > originalString.length() && cs.split(" ").length ==1){
 	        return cs
 	      }
 	    }
-	    
+
 	    originalString
   }
-  
+
   private def locationCasing(str: String) :String ={
     var words = List[String]()
     for(s <- str.split(" ")){
@@ -295,9 +295,9 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
       }
     words mkString " "
   }
-  
+
   private def expandLocation(containerLocation: String): List[String] = {
-    
+
     val containerLocationPrefix = if(!containerLocation.last.isLetter){
       containerLocation.dropRight(1)
     }
@@ -305,7 +305,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
       containerLocation
     }
     var possibleExpansions = List[String]()
-    
+
     if(containerLocationPrefix.length() > 2){
       val stateOrProvinces = BestEntityMentionFinderOriginalAlgorithm.TipsterData.stateOrProvinces
       for(state <- stateOrProvinces){
@@ -314,13 +314,13 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
         }
       }
     }
-    possibleExpansions.toList    
+    possibleExpansions.toList
   }
-  
+
   private def expandAbbreviation(str:String) :String = {
     val stateAbbreviationMatch = BestEntityMentionFinderOriginalAlgorithm.stateAbbreviationPattern.findFirstMatchIn(str)
     if(stateAbbreviationMatch.isDefined){
-      val abbreviation = stateAbbreviationMatch.get.group(2).toUpperCase() + 
+      val abbreviation = stateAbbreviationMatch.get.group(2).toUpperCase() +
     		  stateAbbreviationMatch.get.group(3).toUpperCase()
       val city = stateAbbreviationMatch.get.group(1)
       val expandedStateAbbreviation = BestEntityMentionFinderOriginalAlgorithm.TipsterData.expandStateAbbreviation(abbreviation,city)
@@ -328,7 +328,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
         expandedStateAbbreviation.get
       }
       else{
-       str 
+       str
       }
     }
     else{
@@ -338,7 +338,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
       val expandedLocations = expandLocation(containerLocation)
       for(expandedLocation <- expandedLocations){
         if(locationContainsLocation(expandedLocation,containedLocation)){
-          return (containedLocation + ", " + expandedLocation) 
+          return (containedLocation + ", " + expandedLocation)
         }
       }
       str
@@ -357,7 +357,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
 	      if( (words.length > (originalWords.length +1)) &&
 	          (words.take(originalWords.length).mkString(" ").toLowerCase() == originalString.toLowerCase()) &&
 	          (words(originalWords.length) == "," || words(originalWords.length) == "in")){
-	        candidates  = candidates :+ words.take(originalWords.length).mkString(" ") + ", " + words.drop(originalWords.length+1).mkString(" ") 
+	        candidates  = candidates :+ words.take(originalWords.length).mkString(" ") + ", " + words.drop(originalWords.length+1).mkString(" ")
 	      }
 	      index += 1
       }
@@ -375,7 +375,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
 	              containerMap += ((cs,containerMap.get(cs).get+1))
 	          }
 	          else{
-	              containerMap += ((cs,1))           
+	              containerMap += ((cs,1))
 	          }
           }
         }
@@ -426,7 +426,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
         		( (words.takeRight(originalWords.length).mkString(" ") == originalString) ||
         		   (words.take(originalWords.length).mkString(" ") == originalString)) &&
         		   (words.length < 4)){
-          return (words mkString " ") 
+          return (words mkString " ")
         }
       }
 
@@ -440,10 +440,10 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
 	        return sortedNameList.head
 	      }
       }
-      
+
       originalString
   }
-  
+
   private def isValidLocation(locationStr: String): Boolean = {
     val placeNames = locationStr.split(",").map(f => f.trim())
     if(placeNames.length == 2){
@@ -453,12 +453,12 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
       return false
     }
   }
-  
+
   private def sameLocationType(location1: String, location2: String): Boolean = {
     val cities = BestEntityMentionFinderOriginalAlgorithm.TipsterData.cities
     val stateOrProvinces = BestEntityMentionFinderOriginalAlgorithm.TipsterData.stateOrProvinces
     val countries = BestEntityMentionFinderOriginalAlgorithm.TipsterData.countries
-    
+
     if(cities.contains(location1.toLowerCase()) && cities.contains(location2.toLowerCase())){
       return true
     }
@@ -470,14 +470,14 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
     }
     return false
   }
-  
+
   private def locationContainsLocation(container: String, contained: String): Boolean = {
     val cities = BestEntityMentionFinderOriginalAlgorithm.TipsterData.cities
     val stateOrProvinces = BestEntityMentionFinderOriginalAlgorithm.TipsterData.stateOrProvinces
     val countries = BestEntityMentionFinderOriginalAlgorithm.TipsterData.countries
     val stateCityMap = BestEntityMentionFinderOriginalAlgorithm.TipsterData.provinceCityMap
     val countryCityMap = BestEntityMentionFinderOriginalAlgorithm.TipsterData.countryCityMap
-    
+
     if(cities.contains(contained.toLowerCase())){
       if(stateOrProvinces.contains(container.toLowerCase())){
         val citySet = stateCityMap.get(locationCasing(container))
@@ -503,7 +503,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder{
 object BestEntityMentionFinderOriginalAlgorithm{
   private object AbbreviationData {
 
-  val abbreviationMap = 
+  val abbreviationMap =
     Map( "AL" -> "Alabama",
         "AK" -> "Alaska",
         "AZ" -> "Arizona",
@@ -555,23 +555,23 @@ object BestEntityMentionFinderOriginalAlgorithm{
         "WI" -> "Wisconsin",
         "WY" -> "Wyoming")
   }
-  
-  
+
+
   private val stateAbbreviationPattern = """(\w+),\s([A-Za-z])\.?([A-Za-z])\.?$""".r
   private val stopWords = {
-    io.Source.fromFile(new File("/scratch2/code/jgilme1/BasicEntityMentionFinder/src/main/resources/edu/washington/knowitall/entitymentionfinder/eval/stopwords.txt"))(scala.io.Codec.UTF8).getLines.flatMap(_.split(",")).map(_.toLowerCase).toSet
+    io.Source.fromFile(new File("/scratch/usr/rbart/git/BasicEntityMentionFinder/src/main/resources/edu/washington/knowitall/entitymentionfinder/eval/stopwords.txt"))(scala.io.Codec.UTF8).getLines.flatMap(_.split(",")).map(_.toLowerCase).toSet
   }
-  
+
   private object TipsterData {
-  
-  private val tipsterFile = new File("/scratch2/code/tac2013/entityLinking/src/main/resources/edu/knowitall/tac2013/entitylinking/TipsterGazetteer.txt")
+
+  private val tipsterFile = new File("/scratch/usr/rbart/git/Tac2013EntityLinking/src/main/resources/edu/knowitall/tac2013/entitylinking/TipsterGazetteer.txt")
   private val cityProvincePattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(PROVINCE.*""".r
   private val cityCountryPattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(COUNTRY.*""".r
 
   val citySet =  scala.collection.mutable.Set[String]()
   val stateOrProvinceSet = scala.collection.mutable.Set[String]()
   val countrySet = scala.collection.mutable.Set[String]()
-  
+
   val provinceCityMap = scala.collection.mutable.Map[String,Set[String]]()
   val countryCityMap = scala.collection.mutable.Map[String,Set[String]]()
 
@@ -582,7 +582,7 @@ object BestEntityMentionFinderOriginalAlgorithm{
       if(cityProvinceMatch.isDefined){
         val city = cityProvinceMatch.get.group(1).trim()
         val province = cityProvinceMatch.get.group(2).trim()
-        
+
         if(provinceCityMap.contains(province)){
           val oldSet = provinceCityMap.get(province)
           provinceCityMap += ((province, oldSet.get + city))
@@ -591,12 +591,12 @@ object BestEntityMentionFinderOriginalAlgorithm{
           provinceCityMap += ((province, Set(city)))
         }
       }
-      
+
       val cityCountryMatch = cityCountryPattern.findFirstMatchIn(line)
       if(cityCountryMatch.isDefined){
         val city = cityCountryMatch.get.group(1).trim()
         val country = cityCountryMatch.get.group(2).trim()
-        
+
         if(countryCityMap.contains(country)){
           val oldSet = countryCityMap.get(country)
           countryCityMap += ((country, oldSet.get + city))
@@ -605,13 +605,13 @@ object BestEntityMentionFinderOriginalAlgorithm{
           countryCityMap += ((country, Set(city)))
         }
       }
-      
+
       val pairs = line.split("\\)")
       val pairSplits = { for(p <- pairs) yield p.split("\\(")}
       for(nameAndLocationType <- pairSplits){
         if(nameAndLocationType.size ==2){
 	        val name = nameAndLocationType(0).trim().toLowerCase()
-	        val locationType = nameAndLocationType(1).split(" ")(0).trim()	        
+	        val locationType = nameAndLocationType(1).split(" ")(0).trim()
 	        locationType match {
 	          case "CITY" => { if(!citySet.contains(name)) {
 	        	  					citySet.add(name)
@@ -629,24 +629,24 @@ object BestEntityMentionFinderOriginalAlgorithm{
 	        }
         }
       }
-      
-      
+
+
     })
-    
+
    lazy val provinceToCityMap = provinceCityMap.toMap
    lazy val cities = citySet.toSet
    lazy val countries = countrySet.toSet
    lazy val stateOrProvinces = stateOrProvinceSet.toSet
-   
-   
+
+
    def main(args: Array[String]) = {
     val lcities = provinceToCityMap.get("Louisiana").get
     for(c <- lcities){
       println(c)
     }
   }
-  
-  
+
+
   def expandStateAbbreviation(abr: String, city: String) :Option[String] = {
     if(BestEntityMentionFinderOriginalAlgorithm.AbbreviationData.abbreviationMap.contains(abr)){
       val stateName = BestEntityMentionFinderOriginalAlgorithm.AbbreviationData.abbreviationMap.get(abr)
@@ -657,14 +657,14 @@ object BestEntityMentionFinderOriginalAlgorithm{
         println("Transforming " + abr + " to " + stateName.get)
         return Some((city +", " + stateName.get))
       }
-      else return None 
+      else return None
     }
     else{
       None
     }
   }
 }
-  
+
 }
 
 
@@ -672,5 +672,5 @@ case class NamedEntityCollection(
 	val organizations: List[String],
     val locations: List[String],
     val people: List[String])
-    
+
 case class Entity(val name: String, val offset: Int, val entityType: String)
