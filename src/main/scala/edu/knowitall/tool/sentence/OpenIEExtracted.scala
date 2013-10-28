@@ -22,7 +22,7 @@ trait OpenIEExtracted extends Extracted with Lemmatized with Chunked with Parsed
   lazy val relnounExtrs = relnoun(this.lemmatizedTokens)
 
   private def relnounConverted = relnounExtrs map { re => Extraction.fromRelnoun(re, relnounConf(re)) }
-  private def srlieConverted = srlExtrs map { se => Extraction.fromSrlie(se, srlieConf(se)) }
+  private def srlieConverted = srlExtrs flatMap { se => Extraction.fromSrlie(se, srlieConf(se)) }
 
   lazy val extractions = relnounConverted ++ srlieConverted
 }

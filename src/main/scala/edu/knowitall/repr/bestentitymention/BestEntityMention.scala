@@ -2,9 +2,17 @@ package edu.knowitall.repr.bestentitymention
 
 import edu.knowitall.repr.tag.Tag
 import edu.knowitall.repr.document.Document
+import edu.knowitall.tool.coref.Mention
+import edu.knowitall.tool.coref.Substitution
 
 trait BestEntityMention extends Tag {
   def bestEntityMention: String
+
+  def substitution = {
+    val original = Mention(this.text, this.offset)
+    val best = Mention(this.bestEntityMention, this.offset)
+    Substitution(original, best)
+  }
 }
 
 object BestEntityMention{

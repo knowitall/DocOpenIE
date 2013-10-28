@@ -8,6 +8,7 @@ import edu.knowitall.repr.extraction.Extraction
 import edu.knowitall.repr.extraction.ExtractionPart
 import edu.knowitall.repr.coref.CorefResolved
 import edu.knowitall.repr.link.FreeBaseLink
+import edu.knowitall.repr.link.Link
 import edu.knowitall.tool.sentence.OpenIEExtracted
 import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.tool.coref.Mention
@@ -64,26 +65,29 @@ class KbpDocPrinter(out: java.io.PrintStream) {
 
     for (doc @ DocumentSentence(sentence, offset) <- sents) {
       out.println(s"($offset) ${sentence.text}")
-      for (extr <- sentence.extractions;
-           a1offset = partOffset(extr.arg1, doc);
-           reloffset = partOffset(extr.rel, doc);
-           arg2 <- extr.arg2s) {
-        val a2offset = partOffset(arg2, doc)
-        out.println(f"\t($a1offset: ${extr.arg1.text})\t($reloffset: ${extr.rel.text})\t($a2offset: ${arg2.text})\tconf:${extr.confidence}%.03f")
+      for (extr <- sentence.extractions) {
+        val a1offset = partOffset(extr.arg1, doc)
+        val reloffset = partOffset(extr.rel, doc)
+        val a2offset = partOffset(extr.arg2, doc)
+        out.println(f"\t($a1offset: ${extr.arg1.text})\t($reloffset: ${extr.rel.text})\t($a2offset: ${extr.arg2.text})\tconf:${extr.confidence}%.03f")
       }
     }
     out.println()
   }
 
+  def linkString(l: Link): String = {
+    l match {
+        case f: FreeBaseLink =>
+          val types = f.types.take(2).mkString(", ") + ", ..."
+          f"(${f.offset})\t${f.name}\t${f.id}\t$types\t${f.score}%.02f=f(${f.docSimScore}%.02f, ${f.inlinks}%.02f, ${f.candidateScore}%.02f)"
+        case _ => s"(l.offset)\t${l.toString}"
+    }
+  }
+
   def printLinks(doc: Document with OpenIELinked): Unit = {
 
     for (link <- doc.links) {
-      link match {
-        case f: FreeBaseLink =>
-          val types = f.types.take(2).mkString(", ") + ", ..."
-          out.println(f"(${f.offset})\t${f.name}\t${f.id}\t$types\t${f.score}%.02f=f(${f.docSimScore}%.02f, ${f.inlinks}%.02f, ${f.candidateScore}%.02f)")
-        case _ => println(s"($link.offset)\t${link.toString}")
-      }
+      out.println(linkString(link))
     }
     out.println()
   }
