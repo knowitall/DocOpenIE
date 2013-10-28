@@ -2,10 +2,18 @@ package edu.knowitall.repr.link
 
 import edu.knowitall.repr.tag.Tag
 import edu.knowitall.repr.document.Document
+import edu.knowitall.tool.coref.Substitution
+import edu.knowitall.tool.coref.Mention
 
 trait Link extends Tag {
   def name: String
   def score: Double
+
+  def substitution = {
+    val original = Mention(this.text, this.offset)
+    val best = Mention(this.name, this.offset)
+    Substitution(original, best)
+  }
 }
 
 trait FreeBaseLink extends Link {

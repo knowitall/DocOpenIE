@@ -10,6 +10,7 @@ import edu.knowitall.prep.util.LineReader
 import edu.knowitall.prep.util.Line
 import edu.knowitall.prep.Sentencer
 import edu.knowitall.common.Resource.using
+import edu.knowitall.common.Timing
 import edu.knowitall.repr.sentence.Sentence
 import edu.knowitall.repr.document.DocumentSentence
 import edu.knowitall.repr.document.Document
@@ -29,7 +30,7 @@ object DocOpenIEMain {
  /**
   * Usage: provide path to KBP sample documents.
   */
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit = Timing.timeThen {
 
     val docPath = new File(args(0))
 
@@ -53,22 +54,19 @@ object DocOpenIEMain {
 
     val extractedDocuments = sentencedDocuments map (kd => kd.copy(doc=docExtractor.extract(kd.doc)))
 
-    val outDir = "./full-debug/"
-    val outDirFile = new File(outDir)
-    if (!outDirFile.exists()) outDirFile.mkdir()
-
-    // print documents..
-
-
-
+    val outFile = new File("./output.txt")
+    val psout = new java.io.PrintStream(outFile)
+    val evalPrinter = new EvaluationPrinter(psout)
+    evalPrinter.printColumnHeaderString()
     extractedDocuments.foreach { ed =>
-      using(new java.io.PrintStream(outDir + ed.docId + ".out.txt")) { psout =>
-        val evalPrinter = new EvaluationPrinter(psout)
-        evalPrinter.printColumnHeaderString()
-        evalPrinter.printFull(ed)
-      }
+      evalPrinter.printFull(ed)
     }
-  }
+    psout.flush()
+    System.err.println("Total extractions: " + extractedDocuments.flatMap(_.doc.sentences.map(_.sentence.extractions)).size)
+    System.err.println("Changed extractions: " + evalPrinter.extractionsPrintedCount)
+    psout.close()
+
+  } { timeNs => System.err.println("Processing time: %s".format(Timing.Seconds.format(timeNs))) }
 
   def processDoc(file: File, rawDoc: KbpRawDoc): KbpProcessedDoc = {
     KbpWebDocProcessor.process(rawDoc) match {
