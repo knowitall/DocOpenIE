@@ -28,7 +28,7 @@ scalacOptions ++= Seq("-unchecked", "-deprecation")
 
 javaOptions += "-Xmx4G"
 
-javaOptions += "-XX:+UseConcMarkSweepGC"
+javaOptions ++= Seq("-XX:+UseConcMarkSweepGC", "-Xmx4G", "-Xss512m")
 
 fork in run := true
 
