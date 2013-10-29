@@ -504,7 +504,7 @@ object BestEntityMentionFinderOriginalAlgorithm{
   private object AbbreviationData {
 
   val abbreviationMap =
-    Map( "AL" -> "Alabama",
+    Map("AL" -> "Alabama",
         "AK" -> "Alaska",
         "AZ" -> "Arizona",
         "AR" -> "Arkansas",
@@ -559,12 +559,12 @@ object BestEntityMentionFinderOriginalAlgorithm{
 
   private val stateAbbreviationPattern = """(\w+),\s([A-Za-z])\.?([A-Za-z])\.?$""".r
   private val stopWords = {
-    io.Source.fromFile(new File("/scratch/usr/rbart/git/BasicEntityMentionFinder/src/main/resources/edu/washington/knowitall/entitymentionfinder/eval/stopwords.txt"))(scala.io.Codec.UTF8).getLines.flatMap(_.split(",")).map(_.toLowerCase).toSet
+    io.Source.fromFile(new File("/scratch2/code/jgilme1/UWELExpanded/src/main/resources/edu/knowitall/entitylinking/extended/utils/stopwords.txt"))(scala.io.Codec.UTF8).getLines.flatMap(_.split(",")).map(_.toLowerCase).toSet
   }
 
   private object TipsterData {
 
-  private val tipsterFile = new File("/scratch/usr/rbart/git/Tac2013EntityLinking/src/main/resources/edu/knowitall/tac2013/entitylinking/TipsterGazetteer.txt")
+  private val tipsterFile = new File("/scratch2/code/jgilme1/UWELExpanded/src/main/resources/edu/knowitall/entitylinking/extended/utils/TipsterGazetteer.txt")
   private val cityProvincePattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(PROVINCE.*""".r
   private val cityCountryPattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(COUNTRY.*""".r
 

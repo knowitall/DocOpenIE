@@ -17,6 +17,8 @@ import edu.knowitall.tool.coref.CoreferenceResolver
 import edu.knowitall.tool.bestentitymention.BestEntityMentionsFound
 import edu.knowitall.repr.bestentitymention.BestEntityMention
 import edu.knowitall.collection.immutable.Interval
+import edu.knowitall.repr.bestentitymention.BestEntityMentionResolvedDocument
+import edu.knowitall.repr.link.LinkedDocument
 
 /**
  * Code for producing tab-delimited output for human annotation and evaluation.
@@ -27,7 +29,7 @@ class EvaluationPrinter(out: java.io.PrintStream) {
 
   type SENT = Sentence with OpenIEExtracted
   type ExtractedSentenced = Sentenced[SENT]
-  type FullTraits = OpenIELinked with ExtractedSentenced with BestEntityMentionsFound
+  type FullTraits = LinkedDocument[FreeBaseLink] with CorefResolved[Mention] with ExtractedSentenced with BestEntityMentionResolvedDocument[BestEntityMention]
   type BaselineTraits = OpenIELinked with ExtractedSentenced
 
   val columnHeaders = Seq("Best Arg1", "Rel", "Best Arg2", "Original Arg1", "Original Arg2", "Sentence Text", "Arg1 Links", "Arg2 Links", "Arg1 Best Mentions", "Arg2 Best Mentions", "Doc ID", "Arg1 Changed?", "Arg2 Changed?")
