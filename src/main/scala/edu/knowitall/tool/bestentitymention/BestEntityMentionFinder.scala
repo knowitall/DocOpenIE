@@ -132,8 +132,13 @@ trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument[BestEnti
   //iterate over entities and use bestENtityMentionFinder.findBestEntity to
   // find the bestEntityMentions in the Document
   lazy val bestEntityMentions = {
-    documentEntities.map(entity => {
-      BestEntityMention(entity.name,entity.offset,bestEntityMentionFinder.findBestEntity(entity.name.replaceAll("\\s+"," "), entity.entityType, entity.offset, this.text, this.namedEntityCollection))})
+    documentEntities.flatMap(entity => {
+      val bestEntityString = bestEntityMentionFinder.findBestEntity(entity.name.replaceAll("\\s+"," "), entity.entityType, entity.offset, this.text, this.namedEntityCollection)
+      if(bestEntityString != entity.name)
+        Some(BestEntityMention(entity.name,entity.offset,bestEntityString))
+      else
+        None
+    })
   }
 }
 
