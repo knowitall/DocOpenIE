@@ -11,7 +11,7 @@ import edu.knowitall.tool.document.OpenIEDocumentExtractor
 
 object LinkDiffPrinter extends App {
   
-  type LinkedDocument = Document with Sentenced[_ <: Sentence] with OpenIELinked
+  
   
   import DocOpenIEMain.loadSentencedDocs
   
@@ -27,7 +27,7 @@ object LinkDiffPrinter extends App {
   val diffPrinter = new LinkDiffPrinter(psout)
   psout.println(diffPrinter.columnHeaderString)
   baseLineExtracted.zip(fullExtracted).map { case (base, full) =>
-    diffPrinter.print(base.asInstanceOf[LinkedDocument], full.asInstanceOf[LinkedDocument])  
+    diffPrinter.print(base.doc, full.doc)  
   }
   psout.flush()
   psout.close()
@@ -35,7 +35,7 @@ object LinkDiffPrinter extends App {
 
 class LinkDiffPrinter(out: java.io.PrintStream) {
 
-  import LinkDiffPrinter.LinkedDocument  
+  type LinkedDocument = Document with Sentenced[_ <: Sentence] with OpenIELinked  
   
   def print(oldDoc: LinkedDocument, newDoc: LinkedDocument): Unit = {
     
