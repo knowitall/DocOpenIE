@@ -24,6 +24,8 @@ import edu.knowitall.collection.immutable.Interval
 class EvaluationPrinter(out: java.io.PrintStream) {
 
   var extractionsPrintedCount = 0
+  var extractionsLinked = 0
+  var extractionsResolved = 0
 
   type SENT = Sentence with OpenIEExtracted
   type ExtractedSentenced = Sentenced[SENT]
@@ -108,6 +110,8 @@ class EvaluationPrinter(out: java.io.PrintStream) {
           val fields = Seq(bestArg1Display, e.rel.text, bestArg2Display, e.arg1.text, e.arg2.text, docSent.sentence.text, arg1LinksString, arg2LinksString, arg1BestMentionsString, arg2BestMentionsString, kd.docId.trim, arg1ChangedString, arg2ChangedString)
           out.println(fields.mkString("\t"))
           extractionsPrintedCount += 1
+          if ((arg1Links ++ arg2Links).size > 0) extractionsLinked += 1
+          if ((arg1BestMentions ++ arg2BestMentions).size > 0) extractionsResolved += 1
         }
       }
     }
