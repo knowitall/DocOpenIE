@@ -37,20 +37,22 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
 
   type LinkedDocument = Document with Sentenced[_ <: Sentence] with OpenIELinked  
   
+  private def linkKey(l: FreeBaseLink) = (l.offset, l.text, l.id)
+  
   def print(oldDoc: LinkedDocument, newDoc: LinkedDocument): Unit = {
     
-    val oldLinks = oldDoc.links.toSet
-    val newLinks = newDoc.links.toSet
+    val oldLinks = oldDoc.links.map(l => (linkKey(l), l)).toMap
+    val newLinks = newDoc.links.map(l => (linkKey(l), l)).toMap
     
-    val oldDiff = oldLinks &~ newLinks
-    val newDiff = newLinks &~ oldLinks
+    val oldDiff = (oldLinks -- newLinks.keys).toSeq
+    val newDiff = (newLinks -- oldLinks.keys).toSeq
     
     // old links are paired with "true", new links "false".
     val combined = (oldDiff.map((true, _)) ++ newDiff.map((false, _)))
     // sort by offset
-    val sorted = combined.toSeq.sortBy(_._2.offset)
+    val sorted = combined.toSeq.sortBy(_._2._2.offset)
     
-    sorted foreach { case (oldFlag, link) =>
+    sorted foreach { case (oldFlag, (key, link)) =>
       out.println(diffString(oldFlag, link))
     }
   } 
@@ -69,7 +71,7 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
     
     l match {
         case f: FreeBaseLink =>
-          val types = f.types.take(2).mkString(", ") + ", ..."
+          val types = f.types.take(2).mkString(", ") + { if (f.types.size > 2) ", ..." else "" }
           val fields = Seq(f.offset, f.name, f.id, types, fmt(f.score), fmt(f.docSimScore), fmt(f.inlinks), fmt(f.candidateScore))
           fields.mkString("\t")
         case _ => s"(l.offset)\t${l.toString}"
