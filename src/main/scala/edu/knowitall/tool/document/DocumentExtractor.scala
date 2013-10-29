@@ -24,6 +24,9 @@ import edu.knowitall.tool.bestentitymention.BestEntityMentionFinderOriginalAlgor
 
 class OpenIEDocumentExtractor {
 
+  type InputDoc = Document with Sentenced[_ <: Sentence]
+  type OutputDoc = Document with OpenIELinked with CorefResolved[Mention] with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound
+  
   val parser = new ClearParser()
   val chunker = new OpenNlpChunker()
   val stemmer = new MorphaStemmer()
@@ -60,6 +63,9 @@ class OpenIEDocumentExtractor {
 
 class OpenIENoCorefDocumentExtractor {
 
+  type InputDoc = Document with Sentenced[_ <: Sentence]
+  type OutputDoc = Document with OpenIELinked with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound
+  
   val parser = new ClearParser()
   val chunker = new OpenNlpChunker()
   val stemmer = new MorphaStemmer()
@@ -94,6 +100,9 @@ class OpenIENoCorefDocumentExtractor {
 
 class OpenIEBaselineExtractor {
 
+  type InputDoc = Document with Sentenced[_ <: Sentence]
+  type OutputDoc = Document with OpenIELinked with Sentenced[Sentence with OpenIEExtracted]  
+  
   val parser = new ClearParser()
   val chunker = new OpenNlpChunker()
   val stemmer = new MorphaStemmer()
