@@ -38,7 +38,7 @@ object Extraction {
       val rel = ExtractionPartImpl(inst.extr.rel.text, inst.extr.rel.intervals.flatten.min, inst.extr.rel.tokenIntervals.flatten)
       val arg1 = ExtractionPartImpl(inst.extr.arg1.text, inst.extr.arg1.interval.start, inst.extr.arg1.tokenInterval)
       inst.extr.arg2s.map { arg2 =>
-        ExtractionPartImpl(arg2.text, arg2.interval.start, arg2.tokenInterval).asInstanceOf[Extraction]
+        ExtractionImpl(arg1, rel, ExtractionPartImpl(arg2.text, arg2.interval.start, arg2.tokenInterval), confidence)
       }
     }
   }
