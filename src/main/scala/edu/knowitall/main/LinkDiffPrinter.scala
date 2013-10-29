@@ -27,7 +27,7 @@ object LinkDiffPrinter extends App {
   val diffPrinter = new LinkDiffPrinter(psout)
   psout.println(diffPrinter.columnHeaderString)
   baseLineExtracted.zip(fullExtracted).map { case (base, full) =>
-    diffPrinter.print(base.doc, full.doc)  
+    diffPrinter.print(base, full)  
   }
   psout.flush()
   psout.close()
@@ -35,14 +35,17 @@ object LinkDiffPrinter extends App {
 
 class LinkDiffPrinter(out: java.io.PrintStream) {
 
-  type LinkedDocument = Document with Sentenced[_ <: Sentence] with OpenIELinked  
+  type LinkedDocument = KbpDocument[_ <: Document with Sentenced[_ <: Sentence] with OpenIELinked]  
   
+  // links are distinct given an offset, the text they linked to, and their link ID.
   private def linkKey(l: FreeBaseLink) = (l.offset, l.text, l.id)
   
   def print(oldDoc: LinkedDocument, newDoc: LinkedDocument): Unit = {
     
-    val oldLinks = oldDoc.links.map(l => (linkKey(l), l)).toMap
-    val newLinks = newDoc.links.map(l => (linkKey(l), l)).toMap
+    require(oldDoc.docId.equals(newDoc.docId), "Link diff should be for the same doc.")
+    
+    val oldLinks = oldDoc.doc.links.map(l => (linkKey(l), l)).toMap
+    val newLinks = newDoc.doc.links.map(l => (linkKey(l), l)).toMap
     
     val oldDiff = (oldLinks -- newLinks.keys).toSeq
     val newDiff = (newLinks -- oldLinks.keys).toSeq
@@ -53,16 +56,16 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
     val sorted = combined.toSeq.sortBy(_._2._2.offset)
     
     sorted foreach { case (oldFlag, (key, link)) =>
-      out.println(diffString(oldFlag, link))
+      out.println(diffString(oldFlag, link, oldDoc.docId))
     }
   } 
   
-  val columnHeaders = Seq("SOURCE", "OFFSET", "WIKI TITLE", "FB ID", "COMBINED SCORE", "DOC SIM SCORE", "INLINKS", "CROSSWIKIS SCORE")
+  val columnHeaders = Seq("SOURCE", "OFFSET", "WIKI TITLE", "FB ID", "COMBINED SCORE", "DOC SIM SCORE", "INLINKS", "CROSSWIKIS SCORE", "DOC ID")
   val columnHeaderString = columnHeaders.mkString("\t")
   
-  def diffString(old: Boolean, link: FreeBaseLink): String = {
+  def diffString(old: Boolean, link: FreeBaseLink, docId: String): String = {
     val diffType = if (old) "BASELINE" else "NEW"
-    diffType + "\t" + linkString(link)
+    diffType + "\t" + linkString(link) + "\t" + docId
   }
   
   def linkString(l: Link): String = {
