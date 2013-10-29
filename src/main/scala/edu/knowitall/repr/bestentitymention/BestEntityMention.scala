@@ -7,7 +7,8 @@ import edu.knowitall.tool.coref.Substitution
 
 trait BestEntityMention extends Tag {
   def bestEntityMention: String
-
+  require(bestEntityMention != this.text, "Best Entity Mention annotations should always differ from the text they are annotating")
+  
   def substitution = {
     val original = Mention(this.text, this.offset)
     val best = Mention(this.bestEntityMention, this.offset)
@@ -16,9 +17,7 @@ trait BestEntityMention extends Tag {
 }
 
 object BestEntityMention{
-  case class BestEntityMentionImpl(text: String, offset: Int, bestEntityMention:String ) extends BestEntityMention{
-    require(text != bestEntityMention, "Best Entity Mention annotations should always differ from the text they are annotating")
-  }
+  case class BestEntityMentionImpl(text: String, offset: Int, bestEntityMention:String ) extends BestEntityMention
   def apply (text: String, offset: Int, bestEntityMention:String) = {
 	  BestEntityMentionImpl(text,offset,bestEntityMention)
   }
