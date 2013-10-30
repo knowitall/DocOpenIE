@@ -28,20 +28,19 @@ object DocOpenIEMain {
 
   val docExtractor = new OpenIECorefExpandedDocumentExtractor()
 
- /**
-  * Usage: provide path to KBP sample documents.
-  */
-  def main(args: Array[String]): Unit = Timing.timeThen {
-
-    val docPath = new File(args(0))
+  def loadKbpDocs(path: String): Seq[(File, KbpRawDoc, KbpProcessedDoc)] = {
+    
+    val docPath = new File(path)
 
     val docFiles = docPath.listFiles().filter(_.getName().endsWith("sgm"))
 
     val rawDocs = docFiles flatMap loadKbpDoc
 
-    val procDocs = rawDocs map { case (file, doc) => (file, doc, processDoc(file, doc)) }
-
-    val sentencedDocuments = procDocs.toSeq.map { case (file, rawDoc, procDoc) =>
+    rawDocs map { case (file, doc) => (file, doc, processDoc(file, doc)) }
+  }
+  
+  def loadSentencedDocs(path: String) = {
+    loadKbpDocs(path).toSeq.map { case (file, rawDoc, procDoc) =>
       val text = rawDoc.getString
       val kbpSentences = kbpSentencer.convertToSentences(procDoc)
       val doc = new Document(text) with Sentenced[Sentence] {
@@ -52,6 +51,15 @@ object DocOpenIEMain {
       }
       KbpDocument(doc, procDoc.extractDocId.get)
     }
+  }
+  
+ /**
+  * Usage: provide path to KBP sample documents.
+  */
+  def main(args: Array[String]): Unit = Timing.timeThen {
+
+    val sentencedDocuments = loadSentencedDocs(args(0))
+
     val extractedDocuments = sentencedDocuments map (kd => kd.copy(doc=docExtractor.extract(kd.doc)))
 
     val outFile = new File("./output-103013corefExpanded.txt")
