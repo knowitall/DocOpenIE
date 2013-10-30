@@ -34,11 +34,11 @@ object Extraction {
 
   def fromSrlie(inst: SrlExtractionInstance, confidence: Double): Seq[Extraction] = {
     def tokenIndices(part: SrlExtraction.MultiPart) = part.intervals.flatten
-    inst.triplize(true).filter(_.extr.arg2s.isEmpty).flatMap { inst =>
+    inst.triplize(true).filterNot(_.extr.arg2s.isEmpty).flatMap { inst =>
       val rel = ExtractionPartImpl(inst.extr.rel.text, inst.extr.rel.intervals.flatten.min, inst.extr.rel.tokenIntervals.flatten)
       val arg1 = ExtractionPartImpl(inst.extr.arg1.text, inst.extr.arg1.interval.start, inst.extr.arg1.tokenInterval)
       inst.extr.arg2s.map { arg2 =>
-        ExtractionPartImpl(arg2.text, arg2.interval.start, arg2.tokenInterval).asInstanceOf[Extraction]
+        ExtractionImpl(arg1, rel, ExtractionPartImpl(arg2.text, arg2.interval.start, arg2.tokenInterval), confidence)
       }
     }
   }

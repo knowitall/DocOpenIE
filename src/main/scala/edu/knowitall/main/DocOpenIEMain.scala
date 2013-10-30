@@ -63,7 +63,9 @@ object DocOpenIEMain {
     }
     psout.flush()
     System.err.println("Total extractions: " + extractedDocuments.flatMap(_.doc.sentences.map(_.sentence.extractions)).size)
-    System.err.println("Changed extractions: " + evalPrinter.extractionsPrintedCount)
+    System.err.println("(String-)Changed extractions: " + evalPrinter.extractionsPrintedCount)
+    System.err.println("Linked extractions (arg1 or arg2): " + evalPrinter.extractionsLinked)
+    System.err.println("Best-Mention resolved extractions, arg1 or arg2: " + evalPrinter.extractionsResolved)
     psout.close()
 
   } { timeNs => System.err.println("Processing time: %s".format(Timing.Seconds.format(timeNs))) }
