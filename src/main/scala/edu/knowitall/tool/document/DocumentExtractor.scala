@@ -185,7 +185,7 @@ class OpenIECorefExpandedDocumentExtractor {
     for(m <- cluster.mentions; if m.isPronoun) yield BestEntityMention(m.text,m.offset,bestName)
   }
   
-  def extract(d: Document with Sentenced[_ <: Sentence]): Document with LinkedDocument[FreeBaseLink] with CorefResolved[Mention] with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionResolvedDocument[BestEntityMention] = {
+  def extract(d: Document with Sentenced[_ <: Sentence], debug: Boolean): Document with LinkedDocument[FreeBaseLink] with CorefResolved[Mention] with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionResolvedDocument[BestEntityMention] = {
 
     val preppedSentences = d.sentences.map { case DocumentSentence(sentence, offset) =>
       DocumentSentence(prepSentence(sentence), offset)
@@ -197,14 +197,16 @@ class OpenIECorefExpandedDocumentExtractor {
       val linker = entityLinker
       val bestEntityMentionFinder = bestEntityMentionFinderAlgorithm
     }
-    println("Document : " + d.sentences.head)
-    println("All links in Doc: ")
-    for(link <- doc.links){
-      println(link.offset + "\t" + link.name)
-    }
-    println("All BEMS in Doc: ")
-    for(bem <- doc.bestEntityMentions){
-      println(bem.offset + "\t" + bem.bestEntityMention)
+    if(debug){
+	    println("Document : " + d.sentences.head)
+	    println("All links in Doc: ")
+	    for(link <- doc.links){
+	      println(link.offset + "\t" + link.name)
+	    }
+	    println("All BEMS in Doc: ")
+	    for(bem <- doc.bestEntityMentions){
+	      println(bem.offset + "\t" + bem.bestEntityMention)
+	    }
     }
     var corefExpandedBestEntityMentions = doc.bestEntityMentions
     var clusterIndex =1
@@ -213,18 +215,20 @@ class OpenIECorefExpandedDocumentExtractor {
       val links = getUniqueLinksInCluster(cluster,doc.links)
       val bestEntityMentions = getUniqueBestEntityMentionsInCluster(cluster, doc.bestEntityMentions)
       var bestName :Option[String] = None
-      println("Cluster number " + clusterIndex)
-      println("Mentions: ")
-      for(mention <- mentions){
-        println(mention.offset + "\t" + mention.text + "\t" + mention.isPronoun)
-      }
-      println("Unique links: ")
-      for(l <- links){
-        println(l.offset + "\t" + l.name)
-      }
-      println("Unique BEMS: ")
-      for(bem <- bestEntityMentions){
-        println(bem.offset + "\t" + bem.bestEntityMention)
+      if(debug){
+	      println("Cluster number " + clusterIndex)
+	      println("Mentions: ")
+	      for(mention <- mentions){
+	        println(mention.offset + "\t" + mention.text + "\t" + mention.isPronoun)
+	      }
+	      println("Unique links: ")
+	      for(l <- links){
+	        println(l.offset + "\t" + l.name)
+	      }
+	      println("Unique BEMS: ")
+	      for(bem <- bestEntityMentions){
+	        println(bem.offset + "\t" + bem.bestEntityMention)
+	      }
       }
       if(links.length ==1)  {
         bestName = Some(links.head.name)
@@ -238,11 +242,13 @@ class OpenIECorefExpandedDocumentExtractor {
       }
       clusterIndex += 1
     }
-    println("New BEMS:")
-    for(newMention <- corefExpandedBestEntityMentions){
-      if(doc.bestEntityMentions.forall(p => p.offset != newMention.offset)){
-        println(newMention.offset +"\t" + newMention.bestEntityMention)
-      }
+    if(debug){
+	    println("New BEMS:")
+	    for(newMention <- corefExpandedBestEntityMentions){
+	      if(doc.bestEntityMentions.forall(p => p.offset != newMention.offset)){
+	        println(newMention.offset +"\t" + newMention.bestEntityMention)
+	      }
+	    }
     }
     val newDoc = new Document(d.text) with LinkedDocument[FreeBaseLink] with CorefResolved[Mention] with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionResolvedDocument[BestEntityMention]{
       val links = doc.links

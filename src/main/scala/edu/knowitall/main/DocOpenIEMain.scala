@@ -60,7 +60,7 @@ object DocOpenIEMain {
 
     val sentencedDocuments = loadSentencedDocs(args(0))
 
-    val extractedDocuments = sentencedDocuments map (kd => kd.copy(doc=docExtractor.extract(kd.doc)))
+    val extractedDocuments = sentencedDocuments map (kd => kd.copy(doc=docExtractor.extract(kd.doc,false)))
 
     val outFile = new File("./output-103013corefExpanded.txt")
     val psout = new java.io.PrintStream(outFile)
