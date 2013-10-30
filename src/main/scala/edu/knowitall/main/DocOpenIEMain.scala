@@ -18,6 +18,7 @@ import edu.knowitall.repr.document.Sentenced
 import edu.knowitall.tool.document.OpenIEDocumentExtractor
 import edu.knowitall.tool.document.OpenIEBaselineExtractor
 import edu.knowitall.tool.document.OpenIENoCorefDocumentExtractor
+import edu.knowitall.tool.document.OpenIECorefExpandedDocumentExtractor
 
 case class KbpDocument[D <: Document](val doc: D, val docId: String)
 
@@ -25,7 +26,7 @@ object DocOpenIEMain {
 
   val kbpSentencer = Sentencer.defaultInstance
 
-  val docExtractor = new OpenIEDocumentExtractor()
+  val docExtractor = new OpenIECorefExpandedDocumentExtractor()
 
   def loadKbpDocs(path: String): Seq[(File, KbpRawDoc, KbpProcessedDoc)] = {
     
@@ -59,14 +60,14 @@ object DocOpenIEMain {
 
     val sentencedDocuments = loadSentencedDocs(args(0))
 
-    val extractedDocuments = sentencedDocuments map (kd => kd.copy(doc=docExtractor.extract(kd.doc)))
+    val extractedDocuments = sentencedDocuments map (kd => kd.copy(doc=docExtractor.extract(kd.doc,false)))
 
-    val outFile = new File("./output.txt")
+    val outFile = new File("./output-103013corefExpanded.txt")
     val psout = new java.io.PrintStream(outFile)
     val evalPrinter = new EvaluationPrinter(psout)
     evalPrinter.printColumnHeaderString()
     extractedDocuments.foreach { ed =>
-      evalPrinter.printFull(ed)
+      evalPrinter.printCoref(ed)
     }
     psout.flush()
     System.err.println("Total extractions: " + extractedDocuments.flatMap(_.doc.sentences.map(_.sentence.extractions)).size)
