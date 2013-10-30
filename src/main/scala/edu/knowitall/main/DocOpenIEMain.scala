@@ -54,12 +54,12 @@ object DocOpenIEMain {
     }
     val extractedDocuments = sentencedDocuments map (kd => kd.copy(doc=docExtractor.extract(kd.doc)))
 
-    val outFile = new File("./output-corefExpanded.txt")
+    val outFile = new File("./output-103013corefExpanded.txt")
     val psout = new java.io.PrintStream(outFile)
     val evalPrinter = new EvaluationPrinter(psout)
     evalPrinter.printColumnHeaderString()
     extractedDocuments.foreach { ed =>
-      evalPrinter.printFull(ed)
+      evalPrinter.printCoref(ed)
     }
     psout.flush()
     System.err.println("Total extractions: " + extractedDocuments.flatMap(_.doc.sentences.map(_.sentence.extractions)).size)
