@@ -30,9 +30,9 @@ trait Linker {
 trait OpenIELinked extends LinkedDocument[FreeBaseLink] {
   this: Document with Sentenced[Sentence with OpenIEExtracted] =>
 
-  val minCombinedScore = 0
+  val minCombinedScore = 4.5
 
-  private case class Context(source: DocumentSentence[Sentence with OpenIEExtracted], extended: Seq[DocumentSentence[Sentence with OpenIEExtracted]]) {
+  case class Context(source: DocumentSentence[Sentence with OpenIEExtracted], extended: Seq[DocumentSentence[Sentence with OpenIEExtracted]]) {
     def fullText = (source +: extended).distinct.map(_.sentence.text)
   }
 
@@ -51,11 +51,11 @@ trait OpenIELinked extends LinkedDocument[FreeBaseLink] {
     if (tokens.lastOption.exists(t => t.isDeterminer || t.isPreposition)) tokens = tokens.dropRight(1)
     tokens.map(_.string).mkString(" ")
   }
-  
+
   /**
    * Pairs of (argument, context)
    */
-  private lazy val argContexts = this.sentences.flatMap { s =>
+  lazy val argContexts = this.sentences.flatMap { s =>
     val args = s.sentence.extractions.flatMap(e => e.arg1 :: e.arg2 :: Nil)
     val cleanArgs = args map cleanArg(s.sentence)
     args.zip(cleanArgs).map { case (arg, cleaned) =>
