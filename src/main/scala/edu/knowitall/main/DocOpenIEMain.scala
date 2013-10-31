@@ -62,7 +62,7 @@ object DocOpenIEMain {
 
     val extractedDocuments = sentencedDocuments map (kd => kd.copy(doc=docExtractor.extract(kd.doc)))
 
-    val outFile = new File("./output-103013corefExpanded.txt")
+    val outFile = new File(args(1))
     val psout = new java.io.PrintStream(outFile)
     val evalPrinter = new EvaluationPrinter(psout)
     evalPrinter.printColumnHeaderString()
