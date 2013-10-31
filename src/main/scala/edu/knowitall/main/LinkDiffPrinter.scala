@@ -15,7 +15,7 @@ object LinkDiffPrinter extends App {
 
   import DocOpenIEMain.loadSentencedDocs
 
-  val sentencedDocuments = loadSentencedDocs(args(0))
+  val sentencedDocuments = loadSentencedDocs(args(0))//.filter(_.docId.contains("NYT_ENG_20020724.0283.LDC2007T07"))
 
   val baseLineExtractor = new OpenIEBaselineExtractor()
   val fullExtractor = new OpenIEDocumentExtractor()
@@ -24,6 +24,7 @@ object LinkDiffPrinter extends App {
   val fullExtracted = sentencedDocuments map (kd => kd.copy(doc=fullExtractor.extract(kd.doc)))
 
   val psout = new java.io.PrintStream(args(1))
+
   val diffPrinter = new LinkDiffPrinter(psout)
   psout.println(diffPrinter.columnHeaderString)
   baseLineExtracted.zip(fullExtracted).map { case (base, full) =>
@@ -60,17 +61,18 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
     }
   }
 
-  val columnHeaders = Seq("SOURCE", "OFFSET", "ORIGINAL TEXT", "WIKI TITLE", "FB ID", "COMBINED SCORE", "DOC SIM SCORE", "INLINKS", "CROSSWIKIS SCORE", "CONTEXT CLUSTER MENTIONS", "CONTEXT SIZE", "CONTEXT", "DOC ID")
+  val columnHeaders = Seq("SOURCE", "OFFSET", "ORIGINAL TEXT", "WIKI TITLE", "FB ID", "TYPES", "COMBINED SCORE", "DOC SIM SCORE", "INLINKS", "CROSSWIKIS SCORE", "CONTEXT CLUSTER MENTIONS", "CONTEXT SIZE", "CONTEXT", "DOC ID")
   val columnHeaderString = columnHeaders.mkString("\t")
 
   def diffString(old: Boolean, link: FreeBaseLink, kbpDoc: LinkedDocument): String = {
 
     val argContexts = kbpDoc.doc.argContexts.toSeq.filter { case (arg, _, ctxt) =>
-      val offsetsMatch = link.offset == arg.offset + ctxt.source.offset
+      val chStartMatch = link.offset == arg.offset + ctxt.source.offset
+      val chEndMatch = link.offset + link.text.length == arg.offset + ctxt.source.offset + arg.text.length
       val textMatch = link.text == arg.text
-      offsetsMatch && textMatch
+      chStartMatch && chEndMatch && textMatch
     }
-    require(argContexts.size == 1, "Two links different at same location with same text.")
+    require(argContexts.size == 1, s"${argContexts.size} links found, expected one.")
 
     val context = argContexts.headOption
 
