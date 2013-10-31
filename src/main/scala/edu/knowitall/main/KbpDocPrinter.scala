@@ -19,7 +19,7 @@ import edu.knowitall.tool.bestentitymention.BestEntityMentionsFound
  */
 class KbpDocPrinter(out: java.io.PrintStream) {
 
-  def print(kbpDoc: KbpDocument[Document with OpenIELinked with CorefResolved[Mention] with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound ]): Unit = {
+  def print(kbpDoc: KbpDocument[Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound ]): Unit = {
 
     val KbpDocument(doc, docId) = kbpDoc
 
@@ -47,7 +47,7 @@ class KbpDocPrinter(out: java.io.PrintStream) {
     }
   }
 
-  def printCorefClusters(doc: Document with CorefResolved[Mention]): Unit = {
+  def printCorefClusters(doc: Document with CorefResolved): Unit = {
 
     def pm(m: Mention) = s"(${m.offset}) ${m.text}"
 

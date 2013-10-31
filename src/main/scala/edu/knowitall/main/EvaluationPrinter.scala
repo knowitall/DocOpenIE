@@ -31,10 +31,10 @@ class EvaluationPrinter(out: java.io.PrintStream) {
 
   type SENT = Sentence with OpenIEExtracted
   type ExtractedSentenced = Sentenced[SENT]
-  type CorefTraits = LinkedDocument[FreeBaseLink] with CorefResolved[Mention] with ExtractedSentenced with BestEntityMentionResolvedDocument[BestEntityMention]
+  type CorefTraits = LinkedDocument[FreeBaseLink] with CorefResolved with ExtractedSentenced with BestEntityMentionResolvedDocument[BestEntityMention]
   type BaselineTraits = OpenIELinked with ExtractedSentenced
   type FullTraits = OpenIELinked with ExtractedSentenced with BestEntityMentionsFound
-  
+
   val columnHeaders = Seq("Best Arg1", "Rel", "Best Arg2", "Original Arg1", "Original Arg2", "Sentence Text", "Arg1 Links", "Arg2 Links", "Arg1 Best Mentions", "Arg2 Best Mentions", "Doc ID", "Arg1 Changed?", "Arg2 Changed?")
 
   val columnHeaderString = columnHeaders.mkString("\t")
@@ -75,7 +75,7 @@ class EvaluationPrinter(out: java.io.PrintStream) {
     val substituted = CoreferenceResolver.substitute(indexedText, subIntervals)
     substituted.map(_._1).mkString
   }
-  
+
   def getBestDisplayMention(epart: ExtractionPart, ds: DocumentSentence[SENT], links: Seq[FreeBaseLink], bestMentions: Seq[BestEntityMention]) = {
     val subs = (links.map(_.substitution)++bestMentions.map(_.substitution))
     val filtered = getNonOverlappingSubstitutions(subs)
@@ -121,7 +121,7 @@ class EvaluationPrinter(out: java.io.PrintStream) {
       }
     }
   }
-  
+
   def printBaseline(kd: KbpDocument[_ <: Document with BaselineTraits]): Unit = {
 
     val d = kd.doc
@@ -154,7 +154,7 @@ class EvaluationPrinter(out: java.io.PrintStream) {
       }
     }
   }
-  
+
   def printCoref(kd: KbpDocument[_ <: Document with CorefTraits]): Unit = {
 
     val d = kd.doc

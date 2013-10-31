@@ -9,17 +9,21 @@ import edu.knowitall.repr.tag.Tag
 trait MentionCluster[M <: Mention] {
   def best: M
   def mentions: Seq[M]
+
 }
 
-trait CorefResolved[M <: Mention] {
+trait CorefResolvedSuperTrait {
+  type M <: Mention
+  def clusters: Seq[MentionCluster[M]]
+}
+
+trait CorefResolved extends CorefResolvedSuperTrait {
   this: Document =>
 
-  def clusters: Seq[MentionCluster[M]]
-    
   private lazy val clusterMap = clusters.flatMap(c => c.mentions.map(m => (m, c))).toMap
 
   private lazy val mentions = clusterMap.keys.toSeq
-  
+
   def cluster(m: M) = clusterMap.get(m)
 
   /**

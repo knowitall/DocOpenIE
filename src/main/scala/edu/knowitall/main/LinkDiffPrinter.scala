@@ -3,6 +3,7 @@ package edu.knowitall.main
 import edu.knowitall.repr.sentence.Sentence
 import edu.knowitall.repr.document.Document
 import edu.knowitall.repr.document.Sentenced
+import edu.knowitall.tool.coref.Mention
 import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.repr.link.FreeBaseLink
 import edu.knowitall.repr.link.Link
@@ -59,18 +60,35 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
     }
   }
 
-  val columnHeaders = Seq("SOURCE", "OFFSET", "ORIGINAL TEXT", "WIKI TITLE", "FB ID", "COMBINED SCORE", "DOC SIM SCORE", "INLINKS", "CROSSWIKIS SCORE", "CONTEXT", "DOC ID")
+  val columnHeaders = Seq("SOURCE", "OFFSET", "ORIGINAL TEXT", "WIKI TITLE", "FB ID", "COMBINED SCORE", "DOC SIM SCORE", "INLINKS", "CROSSWIKIS SCORE", "CONTEXT CLUSTER MENTIONS", "CONTEXT SIZE", "CONTEXT", "DOC ID")
   val columnHeaderString = columnHeaders.mkString("\t")
 
   def diffString(old: Boolean, link: FreeBaseLink, kbpDoc: LinkedDocument): String = {
-    val context = kbpDoc.doc.argContexts.find { case (arg, _, context) =>
-      val offsetsMatch = link.offset == arg.offset + context.source.offset
+
+    val argContexts = kbpDoc.doc.argContexts.toSeq.filter { case (arg, _, ctxt) =>
+      val offsetsMatch = link.offset == arg.offset + ctxt.source.offset
       val textMatch = link.text == arg.text
       offsetsMatch && textMatch
     }
+    require(argContexts.size == 1, "Two links different at same location with same text.")
+
+    val context = argContexts.headOption
+
     val contextString = context.map(_._3.fullText.mkString("[", ", ", "]")).getOrElse("CONTEXT NOT FOUND")
+
+    val contextMentions = context.map { case (_, _, ctxt) =>
+      val clusters = ctxt.clusters
+      val texts = clusters.map { c =>
+        c.mentions.map { case m: Mention =>
+          s"(${m.offset}) ${m.text}"
+        }
+      }
+      texts.mkString("[", "] [", "]")
+    }.getOrElse("[]")
+    val contextSize = context.map(_._3.size).getOrElse(0)
     val diffType = if (old) "BASELINE" else "NEW"
-    diffType + "\t" + linkString(link) + "\t" + contextString + "\t" + kbpDoc.docId
+    val fields = Seq(diffType, linkString(link), contextMentions, contextSize, contextString, kbpDoc.docId)
+    fields.mkString("\t")
   }
 
   def linkString(l: Link): String = {
