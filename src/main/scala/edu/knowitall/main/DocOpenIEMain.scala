@@ -75,7 +75,6 @@ object DocOpenIEMain {
     System.err.println("Linked extractions (arg1 or arg2): " + evalPrinter.extractionsLinked)
     System.err.println("Best-Mention resolved extractions, arg1 or arg2: " + evalPrinter.extractionsResolved)
     psout.close()
-
   } { timeNs => System.err.println("Processing time: %s".format(Timing.Seconds.format(timeNs))) }
 
   def processDoc(file: File, rawDoc: KbpRawDoc): KbpProcessedDoc = {

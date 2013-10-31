@@ -59,9 +59,12 @@ trait OpenIELinked extends LinkedDocument[FreeBaseLink] {
     val args = s.sentence.extractions.flatMap(e => e.arg1 :: e.arg2 :: Nil)
     val cleanArgs = args map cleanArg(s.sentence)
     args.zip(cleanArgs).map { case (arg, cleaned) =>
-      val ao = s.sentence.tokens(arg.tokenIndices.head).offset + s.offset
       val extended = if (this.isInstanceOf[CorefResolved[_ <: Mention]]) {
-        val otherMentions = this.asInstanceOf[CorefResolved[_ <: Mention]].clustersAt(ao).flatMap(_.mentions)
+        val argStartToken = s.sentence.tokens(arg.tokenIndices.head)
+        val argEndToken = s.sentence.tokens(arg.tokenIndices.last)
+        val chStart = argStartToken.offset + s.offset
+        val chEnd = argEndToken.offset + argEndToken.string.length + s.offset
+        val otherMentions = this.asInstanceOf[CorefResolved[_ <: Mention]].mentionsBetween(chStart, chEnd)
         otherMentions.map(_.offset).flatMap(sentenceAt).toList
       } else Nil
       val context = Context(s, extended)
