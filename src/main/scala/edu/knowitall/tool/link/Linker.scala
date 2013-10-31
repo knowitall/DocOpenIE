@@ -64,7 +64,7 @@ trait OpenIELinked extends LinkedDocument[FreeBaseLink] {
    */
   lazy val argContexts = this.sentences.flatMap { s =>
     // Get arguments to send to the linker
-    val args = s.sentence.extractions.flatMap(e => e.arg1 :: e.arg2 :: Nil)
+    val args = s.sentence.extractions.flatMap(e => e.arg1 :: e.arg2 :: Nil).distinct
     val cleanArgs = args map cleanArg(s.sentence)
 
     // Get context and cleaned-up form for each arg
