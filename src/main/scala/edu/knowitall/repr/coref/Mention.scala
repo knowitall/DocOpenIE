@@ -9,7 +9,6 @@ import edu.knowitall.repr.tag.Tag
 trait MentionCluster[M <: Mention] {
   def best: M
   def mentions: Seq[M]
-
 }
 
 trait CorefResolvedSuperTrait {

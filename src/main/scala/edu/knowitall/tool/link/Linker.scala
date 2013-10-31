@@ -43,11 +43,11 @@ trait OpenIELinked extends LinkedDocument[FreeBaseLink] {
     def size = extended.size + 1 // +1 for the required source field.
   }
 
-  private def sentenceAt(offset: Int): Option[DocumentSentence[Sentence with OpenIEExtracted]] = {
+  private def sentenceContaining(chStart: Int, chEnd: Int): Option[DocumentSentence[Sentence with OpenIEExtracted]] = {
     this.sentences.find { s =>
-      val charStart = s.offset
-      val charEnd   = s.offset + s.sentence.text.length
-      offset >= charStart && offset <= charEnd
+      val sStart = s.offset
+      val sEnd   = s.offset + s.sentence.text.length
+      chStart >= sStart && chEnd <= sEnd
     }
   }
 
@@ -78,7 +78,9 @@ trait OpenIELinked extends LinkedDocument[FreeBaseLink] {
         def otherMentions = thisCoref.mentionsBetween(chStart, chEnd).map(_.asInstanceOf[thisCoref.M])
         val otherClusters = otherMentions.flatMap(thisCoref.cluster)
         val otherClusterMentions = otherClusters.flatMap(_.mentions)
-        val extended = otherClusterMentions.map(_.offset).flatMap(sentenceAt).toList
+        val extended = otherClusterMentions.flatMap { m =>
+          sentenceContaining(m.offset, m.offset + m.text.length)
+        }
         (extended, otherClusters)
       } else {
         (Nil, Nil)
