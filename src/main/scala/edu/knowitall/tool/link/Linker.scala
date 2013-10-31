@@ -10,6 +10,7 @@ import edu.knowitall.repr.link.FreeBaseLink
 import edu.knowitall.repr.coref.CorefResolved
 import edu.knowitall.repr.extraction.ExtractionPart
 import edu.knowitall.tool.coref.Mention
+import edu.knowitall.repr.coref.MentionCluster
 import edu.knowitall.repr.link.LinkedDocument
 import edu.knowitall.repr.document.Document
 import edu.knowitall.repr.document.DocumentSentence
@@ -30,17 +31,23 @@ trait Linker {
 trait OpenIELinked extends LinkedDocument[FreeBaseLink] {
   this: Document with Sentenced[Sentence with OpenIEExtracted] =>
 
+  // Hardcoded threshold for linker score.
   val minCombinedScore = 4.5
 
-  case class Context(source: DocumentSentence[Sentence with OpenIEExtracted], extended: Seq[DocumentSentence[Sentence with OpenIEExtracted]]) {
+  case class Context(
+      source: DocumentSentence[Sentence with OpenIEExtracted],
+      extended: Seq[DocumentSentence[Sentence with OpenIEExtracted]],
+      clusters: Seq[MentionCluster[_]]) {
+
     def fullText = (source +: extended).distinct.map(_.sentence.text)
+    def size = extended.size + 1 // +1 for the required source field.
   }
 
-  private def sentenceAt(offset: Int): Option[DocumentSentence[Sentence with OpenIEExtracted]] = {
+  private def sentenceContaining(chStart: Int, chEnd: Int): Option[DocumentSentence[Sentence with OpenIEExtracted]] = {
     this.sentences.find { s =>
-      val charStart = s.offset
-      val charEnd   = s.offset + s.sentence.text.length
-      offset >= charStart && offset <= charEnd
+      val sStart = s.offset
+      val sEnd   = s.offset + s.sentence.text.length
+      chStart >= sStart && chEnd <= sEnd
     }
   }
 
@@ -56,15 +63,31 @@ trait OpenIELinked extends LinkedDocument[FreeBaseLink] {
    * Pairs of (argument, context)
    */
   lazy val argContexts = this.sentences.flatMap { s =>
-    val args = s.sentence.extractions.flatMap(e => e.arg1 :: e.arg2 :: Nil)
+    // Get arguments to send to the linker
+    val args = s.sentence.extractions.flatMap(e => e.arg1 :: e.arg2 :: Nil).distinct
     val cleanArgs = args map cleanArg(s.sentence)
+
+    // Get context and cleaned-up form for each arg
     args.zip(cleanArgs).map { case (arg, cleaned) =>
-      val ao = s.sentence.tokens(arg.tokenIndices.head).offset + s.offset
-      val extended = if (this.isInstanceOf[CorefResolved[_ <: Mention]]) {
-        val otherMentions = this.asInstanceOf[CorefResolved[_ <: Mention]].clustersAt(ao).flatMap(_.mentions)
-        otherMentions.map(_.offset).flatMap(sentenceAt).toList
-      } else Nil
-      val context = Context(s, extended)
+      val (extended, clusters) = if (this.isInstanceOf[CorefResolved]) {
+        val argStartToken = s.sentence.tokens(arg.tokenIndices.head)
+        val argEndToken = s.sentence.tokens(arg.tokenIndices.last)
+        val chStart = argStartToken.offset + s.offset
+        val chEnd = argEndToken.offset + argEndToken.string.length + s.offset
+        val thisCoref = this.asInstanceOf[CorefResolved]
+        def otherMentions = thisCoref.mentionsBetween(chStart, chEnd).map(_.asInstanceOf[thisCoref.M])
+        val otherClusters = otherMentions.flatMap(thisCoref.cluster)
+        val otherClusterMentions = otherClusters.flatMap(_.mentions)
+        val extended = otherClusterMentions.flatMap { m =>
+          sentenceContaining(m.offset, m.offset + m.text.length)
+        }
+        (extended, otherClusters)
+      } else {
+        (Nil, Nil)
+      }
+
+      val context = Context(s, extended, clusters)
+
       (arg, cleaned, context)
     }
   }

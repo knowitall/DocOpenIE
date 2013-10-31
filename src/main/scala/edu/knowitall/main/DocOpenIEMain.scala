@@ -26,10 +26,10 @@ object DocOpenIEMain {
 
   val kbpSentencer = Sentencer.defaultInstance
 
-  val docExtractor = new OpenIECorefExpandedDocumentExtractor()
+  val docExtractor = new OpenIEDocumentExtractor()
 
   def loadKbpDocs(path: String): Seq[(File, KbpRawDoc, KbpProcessedDoc)] = {
-    
+
     val docPath = new File(path)
 
     val docFiles = docPath.listFiles().filter(_.getName().endsWith("sgm"))
@@ -38,7 +38,7 @@ object DocOpenIEMain {
 
     rawDocs map { case (file, doc) => (file, doc, processDoc(file, doc)) }
   }
-  
+
   def loadSentencedDocs(path: String) = {
     loadKbpDocs(path).toSeq.map { case (file, rawDoc, procDoc) =>
       val text = rawDoc.getString
@@ -52,7 +52,7 @@ object DocOpenIEMain {
       KbpDocument(doc, procDoc.extractDocId.get)
     }
   }
-  
+
  /**
   * Usage: provide path to KBP sample documents.
   */
@@ -60,9 +60,9 @@ object DocOpenIEMain {
 
     val sentencedDocuments = loadSentencedDocs(args(0))
 
-    val extractedDocuments = sentencedDocuments map (kd => kd.copy(doc=docExtractor.extract(kd.doc,false)))
+    val extractedDocuments = sentencedDocuments map (kd => kd.copy(doc=docExtractor.extract(kd.doc)))
 
-    val outFile = new File("./output-103013corefExpanded.txt")
+    val outFile = new File(args(1))
     val psout = new java.io.PrintStream(outFile)
     val evalPrinter = new EvaluationPrinter(psout)
     evalPrinter.printColumnHeaderString()
@@ -75,7 +75,6 @@ object DocOpenIEMain {
     System.err.println("Linked extractions (arg1 or arg2): " + evalPrinter.extractionsLinked)
     System.err.println("Best-Mention resolved extractions, arg1 or arg2: " + evalPrinter.extractionsResolved)
     psout.close()
-
   } { timeNs => System.err.println("Processing time: %s".format(Timing.Seconds.format(timeNs))) }
 
   def processDoc(file: File, rawDoc: KbpRawDoc): KbpProcessedDoc = {

@@ -40,7 +40,7 @@ trait KBPRuleResolver extends CorefResolver with Linker {
   // the rule resolver takes as input a document that:
   type document = Document with
   // already has some coref info, such as from stanford
-       CorefResolved[Mention] with
+       CorefResolved with
   // and has been extracted via Open IE.
        Sentenced[Sentence with OpenIEExtracted]
 
