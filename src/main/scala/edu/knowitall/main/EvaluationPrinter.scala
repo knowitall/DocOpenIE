@@ -33,8 +33,6 @@ class EvaluationPrinter(out: java.io.PrintStream) {
   import EvaluationPrinter._
 
   var extractionsPrintedCount = 0
-  var extractionsLinked = 0
-  var extractionsResolved = 0
 
   type SENT = Sentence with OpenIEExtracted
   type ExtractedSentenced = Sentenced[SENT]
@@ -42,7 +40,24 @@ class EvaluationPrinter(out: java.io.PrintStream) {
   type BaselineTraits = OpenIELinked with ExtractedSentenced
   type FullTraits = OpenIELinked with ExtractedSentenced with BestEntityMentionsFound
 
-  val columnHeaders = Seq("Best Arg1", "Rel", "Best Arg2", "Original Arg1", "Original Arg2", "Sentence Text", "Arg1 Links", "Arg2 Links", "Arg1 Best Mentions", "Arg2 Best Mentions", "Doc ID", "Arg1 Changed?", "Arg2 Changed?")
+  type ExtractedKbpDoc = KbpDocument[_ <: Document with ExtractedSentenced]
+
+  val columnHeaders = Seq(
+      "Best Arg1",
+      "Rel",
+      "Best Arg2",
+      "Original Arg1",
+      "Original Arg2",
+      "Sentence Text",
+      "Arg1 Best Mentions",
+      "Arg2 Best Mentions",
+      "Arg1 Links",
+      "Arg2 Links",
+      "Original Arg1 Links",
+      "Original Arg2 Links",
+      "Doc ID",
+      "Arg1 Changed?",
+      "Arg2 Changed?")
 
   val columnHeaderString = columnHeaders.mkString("\t")
 
@@ -83,6 +98,12 @@ class EvaluationPrinter(out: java.io.PrintStream) {
     }
   }
 
+  def getBestArgs(extr: Extraction, d: Document with ExtractedSentenced, ds: DocumentSentence[SENT]) = {
+    val bestArg1 = getBestDisplayMention(extr.arg1, d, ds)
+    val bestArg2 = getBestDisplayMention(extr.arg2, d, ds)
+    (bestArg1, bestArg2)
+  }
+
   def getLinks(epart: ExtractionPart, d: Document, ds: DocumentSentence[SENT]) = {
     if (d.isInstanceOf[LinkedDocument]) {
       d.asInstanceOf[LinkedDocument].linksBetween(offset(epart, ds), offset(epart, ds)+epart.text.length)
@@ -95,35 +116,67 @@ class EvaluationPrinter(out: java.io.PrintStream) {
     } else Nil
   }
 
-  def printFull(kd: KbpDocument[_ <: Document with ExtractedSentenced]): Unit = {
+  def printFull(baseline: ExtractedKbpDoc, comparison: ExtractedKbpDoc): Unit = {
 
-    val d = kd.doc
+    val baseDoc = baseline.doc
+    val compDoc = comparison.doc
 
-    for (docSent <- d.sentences) {
+    // we assume sentencing and extractions are the same....
+    val sentencePairs = baseline.doc.sentences.zip(comparison.doc.sentences)
 
-      for (e <- docSent.sentence.extractions) {
+    for ((baseSent, compSent) <- sentencePairs) {
 
-        val arg1Links = getLinks(e.arg1, d, docSent)
-        val arg1BestMentions = getBestEntityMentions(e.arg1, d, docSent)
-        val arg2Links = getLinks(e.arg2, d, docSent)
-        val arg2BestMentions = getBestEntityMentions(e.arg2, d, docSent)
-        val bestArg1Display = getBestDisplayMention(e.arg1, d, docSent)
-        val bestArg2Display = getBestDisplayMention(e.arg2, d, docSent)
-        val arg1Changed = bestArg1Display != e.arg1.text
-        val arg2Changed = bestArg2Display != e.arg2.text
-        if (arg1Changed || arg2Changed) {
-          val arg1ChangedString = if (arg1Changed) "YES" else "NO"
-          val arg2ChangedString = if (arg2Changed) "YES" else "NO"
-          val arg1LinksString = arg1Links.map(_.debugString).mkString("[", ", ", "]")
-          val arg2LinksString = arg2Links.map(_.debugString).mkString("[", ", ", "]")
+      require(baseSent.sentence.text == compSent.sentence.text)
+
+      val extrPairs = baseSent.sentence.extractions.zip(compSent.sentence.extractions)
+
+      for ((baseExtr, compExtr) <- extrPairs) {
+
+        val bestBaseArgs @ (bestBaseArg1, bestBaseArg2) = getBestArgs(baseExtr, baseDoc, baseSent)
+        val bestCompArgs @ (bestCompArg1, bestCompArg2) = getBestArgs(compExtr, compDoc, compSent)
+
+        val extrChanged = !bestBaseArgs.equals(bestCompArgs)
+
+        if (extrChanged) {
+
+          val baseArg1Links = getLinks(baseExtr.arg1, baseDoc, baseSent)
+          val baseArg2Links = getLinks(baseExtr.arg2, baseDoc, baseSent)
+          val baseArg1LinksString = baseArg1Links.map(_.debugString).mkString("[", ", ", "]")
+          val baseArg2LinksString = baseArg2Links.map(_.debugString).mkString("[", ", ", "]")
+
+          val compArg1Links = getLinks(compExtr.arg1, compDoc, compSent)
+          val compArg2Links = getLinks(compExtr.arg2, compDoc, compSent)
+          val compArg1LinksString = compArg1Links.map(_.debugString).mkString("[", ", ", "]")
+          val compArg2LinksString = compArg2Links.map(_.debugString).mkString("[", ", ", "]")
+
+          val arg1BestMentions = getBestEntityMentions(compExtr.arg1, compDoc, compSent)
+          val arg2BestMentions = getBestEntityMentions(compExtr.arg2, compDoc, compSent)
           val arg1BestMentionsString = arg1BestMentions.map(_.debugString).mkString("[", ", ", "]")
           val arg2BestMentionsString = arg2BestMentions.map(_.debugString).mkString("[", ", ", "]")
 
-          val fields = Seq(bestArg1Display, e.rel.text, bestArg2Display, e.arg1.text, e.arg2.text, docSent.sentence.text, arg1LinksString, arg2LinksString, arg1BestMentionsString, arg2BestMentionsString, kd.docId.trim, arg1ChangedString, arg2ChangedString)
+          val arg1ChangedString = if (bestCompArg1 != bestBaseArg1) "YES" else "NO"
+          val arg2ChangedString = if (bestCompArg2 != bestBaseArg1) "YES" else "NO"
+
+          val fields = Seq(
+              bestCompArg1,
+              compExtr.rel.text,
+              bestCompArg2,
+              bestBaseArg1,
+              bestBaseArg2,
+              compSent.sentence.text,
+              arg1BestMentionsString,
+              arg2BestMentionsString,
+              compArg1LinksString,
+              compArg2LinksString,
+              baseArg1LinksString,
+              baseArg2LinksString,
+              comparison.docId.trim,
+              arg1ChangedString,
+              arg2ChangedString)
+
+
           out.println(fields.map(clean).mkString("\t"))
           extractionsPrintedCount += 1
-          if ((arg1Links ++ arg2Links).size > 0) extractionsLinked += 1
-          if ((arg1BestMentions ++ arg2BestMentions).size > 0) extractionsResolved += 1
         }
       }
     }

@@ -26,8 +26,6 @@ object DocOpenIEMain {
 
   val kbpSentencer = Sentencer.defaultInstance
 
-  val docExtractor = new OpenIEDocumentExtractor()
-
   def loadKbpDocs(path: String): Seq[(File, KbpRawDoc, KbpProcessedDoc)] = {
 
     val docPath = new File(path)
@@ -58,22 +56,28 @@ object DocOpenIEMain {
   */
   def main(args: Array[String]): Unit = Timing.timeThen {
 
-    val sentencedDocuments = loadSentencedDocs(args(0))
+    val sentencedDocuments = loadSentencedDocs(args(0)).take(1)
 
-    val extractedDocuments = sentencedDocuments map (kd => kd.copy(doc=docExtractor.extract(kd.doc)))
+    val baselineSystem = new OpenIEBaselineExtractor()
+    val comparisonSystem = new OpenIEDocumentExtractor()
+
+    val baselineDocuments = sentencedDocuments.map(kd => kd.copy(doc=baselineSystem.extract(kd.doc)))
+    val comparisonDocuments = sentencedDocuments.map(kd => kd.copy(doc=comparisonSystem.extract(kd.doc)))
+    val docPairs = baselineDocuments.zip(comparisonDocuments)
+
 
     val outFile = new File(args(1))
     val psout = new java.io.PrintStream(outFile)
     val evalPrinter = new EvaluationPrinter(psout)
     evalPrinter.printColumnHeaderString()
-    extractedDocuments.foreach { ed =>
-      evalPrinter.printFull(ed)
+    docPairs.foreach { case (baseline, comparison) =>
+      evalPrinter.printFull(baseline, comparison)
     }
     psout.flush()
-    System.err.println("Total extractions: " + extractedDocuments.flatMap(_.doc.sentences.map(_.sentence.extractions)).size)
+    System.err.println("Total extractions: " + comparisonDocuments.flatMap(_.doc.sentences.map(_.sentence.extractions)).size)
     System.err.println("(String-)Changed extractions: " + evalPrinter.extractionsPrintedCount)
-    System.err.println("Linked extractions (arg1 or arg2): " + evalPrinter.extractionsLinked)
-    System.err.println("Best-Mention resolved extractions, arg1 or arg2: " + evalPrinter.extractionsResolved)
+    System.err.println("Baseline Linked extractions (arg1 or arg2): " + baselineDocuments.flatMap(_.doc.links).size)
+    System.err.println("Comparison Linked extractions (arg1 or arg2): " + comparisonDocuments.flatMap(_.doc.links).size)
     psout.close()
   } { timeNs => System.err.println("Processing time: %s".format(Timing.Seconds.format(timeNs))) }
 
