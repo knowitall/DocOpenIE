@@ -7,6 +7,7 @@ import edu.knowitall.tool.coref.Mention
 
 trait Link extends Tag {
   def name: String
+  def id: String
   def score: Double
 
   def substitution = {
@@ -14,6 +15,8 @@ trait Link extends Tag {
     val best = Mention(this.name, this.offset)
     Substitution(original, best)
   }
+
+  def debugString = Seq(name, id, score).mkString("(", ",", ")")
 }
 
 trait FreeBaseLink extends Link {
@@ -29,13 +32,12 @@ object FreeBaseLink {
   def apply(text: String, offset: Int, name: String, score: Double, docSimScore: Double, candidateScore: Double, inlinks: Double, id: String, types: Seq[String]) = FreeBaseLinkImpl(text, offset, name, score, docSimScore, candidateScore, inlinks, id, types)
 }
 
-trait LinkedDocument[L <: Link] {
+trait LinkedDocument {
   this: Document =>
 
+  type L <: Link
+
   def links: Seq[L]
-
-
-
 
   /**
    * Get links contained between the character interval
