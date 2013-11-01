@@ -33,7 +33,7 @@ class Sentencer private (val segmenter: Segmenter) {
     }
   }
 
-  private val newLine = Pattern.compile("\n")
+  private val newLine = Pattern.compile("\n|\t")
 
   private def buildParagraphs(lineIterator: Iterator[KbpDocLine]): Seq[KbpDocLine] = {
     val lineGroups = Iterator.continually {

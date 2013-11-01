@@ -89,20 +89,15 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
     }.getOrElse("[]")
     val contextSize = context.map(_._3.size).getOrElse(0)
     val diffType = if (old) "BASELINE" else "NEW"
-    val fields = Seq(diffType, linkString(link), contextMentions, contextSize, contextString, kbpDoc.docId)
-    fields.mkString("\t")
+    val fields = Seq(diffType) ++ linkFields(link) ++ Seq(contextMentions, contextSize.toString, contextString, kbpDoc.docId)
+    fields.map(EvaluationPrinter.clean).mkString("\t")
   }
 
-  def linkString(l: Link): String = {
+  def linkFields(f: FreeBaseLink): Seq[String] = {
 
     def fmt(d: Double) = "%.02f" format d
-
-    l match {
-        case f: FreeBaseLink =>
-          val types = f.types.take(2).mkString(", ") + { if (f.types.size > 2) ", ..." else "" }
-          val fields = Seq(f.offset, f.text, f.name, f.id, types, fmt(f.score), fmt(f.docSimScore), fmt(f.inlinks), fmt(f.candidateScore))
-          fields.mkString("\t")
-        case _ => s"(l.offset)\t${l.toString}"
-    }
+    val types = f.types.take(2).mkString(", ") + { if (f.types.size > 2) ", ..." else "" }
+    val fields = Seq(f.offset.toString, f.text, f.name, f.id, types, fmt(f.score), fmt(f.docSimScore), fmt(f.inlinks), fmt(f.candidateScore))
+    fields
   }
 }

@@ -7,6 +7,7 @@ import edu.knowitall.tool.coref.Mention
 
 trait Link extends Tag {
   def name: String
+  def id: String
   def score: Double
 
   def substitution = {
@@ -14,6 +15,8 @@ trait Link extends Tag {
     val best = Mention(this.name, this.offset)
     Substitution(original, best)
   }
+
+  def debugString = Seq(name, id, score).mkString("(", ",", ")")
 }
 
 trait FreeBaseLink extends Link {
