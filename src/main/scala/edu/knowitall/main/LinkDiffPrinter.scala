@@ -15,20 +15,18 @@ object LinkDiffPrinter extends App {
 
   import DocOpenIEMain.loadSentencedDocs
 
-  val sentencedDocuments = loadSentencedDocs(args(0))//.filter(_.docId.contains("NYT_ENG_20020724.0283.LDC2007T07"))
+  val sentencedDocuments = loadSentencedDocs(args(0))
 
-  val baseLineExtractor = new OpenIEBaselineExtractor()
-  val fullExtractor = new OpenIEDocumentExtractor()
+  val extractor = new OpenIEDocumentExtractor()
 
-  val baseLineExtracted = sentencedDocuments map (kd => kd.copy(doc=baseLineExtractor.extract(kd.doc)))
-  val fullExtracted = sentencedDocuments map (kd => kd.copy(doc=fullExtractor.extract(kd.doc)))
+  val extracted = sentencedDocuments map (kd => kd.copy(doc=extractor.extract(kd.doc)))
 
   val psout = new java.io.PrintStream(args(1))
 
   val diffPrinter = new LinkDiffPrinter(psout)
   psout.println(diffPrinter.columnHeaderString)
-  baseLineExtracted.zip(fullExtracted).map { case (base, full) =>
-    diffPrinter.print(base, full)
+  extracted.map { extrDoc =>
+    diffPrinter.printAll("RULES", extrDoc)
   }
   psout.flush()
   psout.close()
@@ -41,7 +39,7 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
   // links are distinct given an offset, the text they linked to, and their link ID.
   private def linkKey(l: FreeBaseLink) = (l.offset, l.text, l.id)
 
-  def print(oldDoc: LinkedDocument, newDoc: LinkedDocument): Unit = {
+  def printDiff(oldDoc: LinkedDocument, newDoc: LinkedDocument): Unit = {
 
     require(oldDoc.docId.equals(newDoc.docId), "Link diff should be for the same doc.")
 
@@ -57,14 +55,21 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
     val sorted = combined.toSeq.sortBy(_._2._2.offset)
 
     sorted foreach { case (oldFlag, (key, link)) =>
-      out.println(diffString(oldFlag, link, { if (oldFlag) oldDoc else newDoc }))
+      val name = if (oldFlag) "BASELINE" else "NEW"
+      out.println(linkString(name, link, { if (oldFlag) oldDoc else newDoc }))
+    }
+  }
+
+  def printAll(runName: String, doc: LinkedDocument): Unit = {
+    doc.doc.links foreach { link =>
+      out.println(linkString(runName, link, doc))
     }
   }
 
   val columnHeaders = Seq("SOURCE", "OFFSET", "ORIGINAL TEXT", "WIKI TITLE", "FB ID", "TYPES", "COMBINED SCORE", "DOC SIM SCORE", "INLINKS", "CROSSWIKIS SCORE", "CONTEXT CLUSTER MENTIONS", "CONTEXT SIZE", "CONTEXT", "DOC ID")
   val columnHeaderString = columnHeaders.mkString("\t")
 
-  def diffString(old: Boolean, link: FreeBaseLink, kbpDoc: LinkedDocument): String = {
+  def linkString(name: String, link: FreeBaseLink, kbpDoc: LinkedDocument): String = {
 
     val argContexts = kbpDoc.doc.argContexts.toSeq.filter { case (arg, _, ctxt) =>
       val chStartMatch = link.offset == arg.offset + ctxt.source.offset
@@ -88,8 +93,7 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
       texts.mkString("[", "] [", "]")
     }.getOrElse("[]")
     val contextSize = context.map(_._3.size).getOrElse(0)
-    val diffType = if (old) "BASELINE" else "NEW"
-    val fields = Seq(diffType) ++ linkFields(link) ++ Seq(contextMentions, contextSize.toString, contextString, kbpDoc.docId)
+    val fields = Seq(name) ++ linkFields(link) ++ Seq(contextMentions, contextSize.toString, contextString, kbpDoc.docId)
     fields.map(EvaluationPrinter.clean).mkString("\t")
   }
 
