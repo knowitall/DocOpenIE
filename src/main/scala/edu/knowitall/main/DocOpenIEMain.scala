@@ -56,7 +56,7 @@ object DocOpenIEMain {
   */
   def main(args: Array[String]): Unit = Timing.timeThen {
 
-    val sentencedDocuments = loadSentencedDocs(args(0)).take(1)
+    val sentencedDocuments = loadSentencedDocs(args(0))
 
     val baselineSystem = new OpenIEBaselineExtractor()
     val comparisonSystem = new OpenIEDocumentExtractor()

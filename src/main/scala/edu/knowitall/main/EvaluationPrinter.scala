@@ -91,7 +91,7 @@ class EvaluationPrinter(out: java.io.PrintStream) {
     else {
       val eOffset = offset(epart, ds)
       val indexedText = epart.text.zipWithIndex.map(p => (p._1, p._2+eOffset))
-      val fixedSubs = subs.map(_.fixPossessive)
+      val fixedSubs = filtered.map(_.fixPossessive)
       val subIntervals = fixedSubs.map { s => (Interval.open(s.mention.offset, s.mention.offset + s.mention.text.length), s.best.text) }
       val substituted = CoreferenceResolver.substitute(indexedText, subIntervals)
       substituted.map(_._1).mkString
