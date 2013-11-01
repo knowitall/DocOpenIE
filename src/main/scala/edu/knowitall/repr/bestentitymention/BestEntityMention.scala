@@ -26,8 +26,10 @@ object BestEntityMention{
 	  BestEntityMentionImpl(text,offset,bestEntityMention)
   }
 }
-trait BestEntityMentionResolvedDocument[B <: BestEntityMention]{
+trait BestEntityMentionResolvedDocument {
   this: Document =>
+
+  type B <: BestEntityMention
 
   def bestEntityMentions: Seq[B];
 

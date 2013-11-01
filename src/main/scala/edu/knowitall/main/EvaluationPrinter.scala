@@ -38,7 +38,7 @@ class EvaluationPrinter(out: java.io.PrintStream) {
 
   type SENT = Sentence with OpenIEExtracted
   type ExtractedSentenced = Sentenced[SENT]
-  type CorefTraits = LinkedDocument[FreeBaseLink] with CorefResolved with ExtractedSentenced with BestEntityMentionResolvedDocument[BestEntityMention]
+  type CorefTraits = LinkedDocument with CorefResolved with ExtractedSentenced with BestEntityMentionResolvedDocument
   type BaselineTraits = OpenIELinked with ExtractedSentenced
   type FullTraits = OpenIELinked with ExtractedSentenced with BestEntityMentionsFound
 
@@ -50,8 +50,10 @@ class EvaluationPrinter(out: java.io.PrintStream) {
 
   private def offset(epart: ExtractionPart, ds: DocumentSentence[SENT]) = ds.offset + ds.sentence.tokens(epart.tokenIndices.head).offset
 
-
-
+  /**
+   * iterate over subs and remove any Substitutions, by their interval, that overlap with earlier subs.
+   * e.g. ([0,1], [1,2], [2,3]) -> ([0,1], [2,3])
+   */
   def getNonOverlappingSubstitutions(subs: Seq[Substitution]): Seq[Substitution] = {
     var subsToKeep = List.empty[Substitution]
     var usedIntervals = List.empty[Interval]
@@ -65,109 +67,48 @@ class EvaluationPrinter(out: java.io.PrintStream) {
     subsToKeep
   }
 
-  def getDisplayMention(epart: ExtractionPart, sourceSent: DocumentSentence[SENT], subs: Seq[Substitution]): String = {
-    val eOffset = offset(epart, sourceSent)
-    val indexedText = epart.text.zipWithIndex.map(p => (p._1, p._2+eOffset))
-    val fixedSubs = subs.map(_.fixPossessive)
-    val subIntervals = fixedSubs.map { s => (Interval.open(s.mention.offset, s.mention.offset + s.mention.text.length), s.best.text) }
-    val substituted = CoreferenceResolver.substitute(indexedText, subIntervals)
-    substituted.map(_._1).mkString
-  }
-
-  def getBestDisplayMention(epart: ExtractionPart, ds: DocumentSentence[SENT], links: Seq[FreeBaseLink], bestMentions: Seq[BestEntityMention]) = {
+  def getBestDisplayMention(epart: ExtractionPart, d: Document with ExtractedSentenced, ds: DocumentSentence[SENT]) = {
+    val links = getLinks(epart, d, ds)
+    val bestMentions = getBestEntityMentions(epart, d, ds)
     val subs = (links.map(_.substitution)++bestMentions.map(_.substitution))
     val filtered = getNonOverlappingSubstitutions(subs)
     if (filtered.isEmpty) epart.text
-    else getDisplayMention(epart, ds, filtered)
-  }
-
-  def printFull(kd: KbpDocument[_ <: Document with FullTraits]): Unit = {
-
-    val d = kd.doc
-
-    def getLinks(epart: ExtractionPart, ds: DocumentSentence[SENT]) = d.linksBetween(offset(epart, ds), offset(epart, ds)+epart.text.length)
-    def getBestEntityMentions(epart: ExtractionPart, ds: DocumentSentence[SENT]) = d.bestEntityMentionsBetween(offset(epart, ds), offset(epart, ds)+epart.text.length)
-
-    for (docSent <- d.sentences) {
-
-      for (e <- docSent.sentence.extractions) {
-
-        val arg1Links = getLinks(e.arg1, docSent)
-        val arg1BestMentions = getBestEntityMentions(e.arg1, docSent)
-        val arg2Links = getLinks(e.arg2, docSent)
-        val arg2BestMentions = getBestEntityMentions(e.arg2, docSent)
-        val bestArg1Display = getBestDisplayMention(e.arg1, docSent, arg1Links, arg1BestMentions)
-        val bestArg2Display = getBestDisplayMention(e.arg2, docSent, arg2Links, arg2BestMentions)
-        val arg1Changed = bestArg1Display != e.arg1.text
-        val arg2Changed = bestArg2Display != e.arg2.text
-        if (arg1Changed || arg2Changed) {
-          val arg1ChangedString = if (arg1Changed) "YES" else "NO"
-          val arg2ChangedString = if (arg2Changed) "YES" else "NO"
-          val arg1LinksString = arg1Links.map(_.debugString).mkString("[", ", ", "]")
-          val arg2LinksString = arg2Links.map(_.debugString).mkString("[", ", ", "]")
-          val arg1BestMentionsString = arg1BestMentions.map(_.debugString).mkString("[", ", ", "]")
-          val arg2BestMentionsString = arg2BestMentions.map(_.debugString).mkString("[", ", ", "]")
-
-          val fields = Seq(bestArg1Display, e.rel.text, bestArg2Display, e.arg1.text, e.arg2.text, docSent.sentence.text, arg1LinksString, arg2LinksString, arg1BestMentionsString, arg2BestMentionsString, kd.docId.trim, arg1ChangedString, arg2ChangedString)
-          out.println(fields.map(clean).mkString("\t"))
-          extractionsPrintedCount += 1
-          if ((arg1Links ++ arg2Links).size > 0) extractionsLinked += 1
-          if ((arg1BestMentions ++ arg2BestMentions).size > 0) extractionsResolved += 1
-        }
-      }
+    else {
+      val eOffset = offset(epart, ds)
+      val indexedText = epart.text.zipWithIndex.map(p => (p._1, p._2+eOffset))
+      val fixedSubs = subs.map(_.fixPossessive)
+      val subIntervals = fixedSubs.map { s => (Interval.open(s.mention.offset, s.mention.offset + s.mention.text.length), s.best.text) }
+      val substituted = CoreferenceResolver.substitute(indexedText, subIntervals)
+      substituted.map(_._1).mkString
     }
   }
 
-  def printBaseline(kd: KbpDocument[_ <: Document with BaselineTraits]): Unit = {
-
-    val d = kd.doc
-
-    def getLinks(epart: ExtractionPart, ds: DocumentSentence[SENT]) = d.linksBetween(offset(epart, ds), offset(epart, ds)+epart.text.length)
-
-    for (docSent <- d.sentences) {
-
-      for (e <- docSent.sentence.extractions) {
-
-        val arg1Links = getLinks(e.arg1, docSent)
-        val arg2Links = getLinks(e.arg2, docSent)
-        val bestArg1Display = getBestDisplayMention(e.arg1, docSent, arg1Links, Nil)
-        val bestArg2Display = getBestDisplayMention(e.arg2, docSent, arg2Links, Nil)
-        val arg1Changed = bestArg1Display != e.arg1.text
-        val arg2Changed = bestArg2Display != e.arg2.text
-        if (arg1Changed || arg2Changed) {
-          val arg1ChangedString = if (arg1Changed) "YES" else "NO"
-          val arg2ChangedString = if (arg2Changed) "YES" else "NO"
-          val arg1LinksString = arg1Links.map(_.debugString).mkString("[", ", ", "]")
-          val arg2LinksString = arg2Links.map(_.debugString).mkString("[", ", ", "]")
-          val arg1BestMentionsString = "[]"
-          val arg2BestMentionsString = "[]"
-
-          val fields = Seq(bestArg1Display, e.rel.text, bestArg2Display, e.arg1.text, e.arg2.text, docSent.sentence.text, arg1LinksString, arg2LinksString, arg1BestMentionsString, arg2BestMentionsString, kd.docId.trim, arg1ChangedString, arg2ChangedString)
-          out.println(fields.map(clean).mkString("\t"))
-          extractionsPrintedCount += 1
-          if ((arg1Links ++ arg2Links).size > 0) extractionsLinked += 1
-        }
-      }
-    }
+  def getLinks(epart: ExtractionPart, d: Document, ds: DocumentSentence[SENT]) = {
+    if (d.isInstanceOf[LinkedDocument]) {
+      d.asInstanceOf[LinkedDocument].linksBetween(offset(epart, ds), offset(epart, ds)+epart.text.length)
+    } else Nil
   }
 
-  def printCoref(kd: KbpDocument[_ <: Document with CorefTraits]): Unit = {
+  def getBestEntityMentions(epart: ExtractionPart, d: Document, ds: DocumentSentence[SENT]) = {
+    if (d.isInstanceOf[BestEntityMentionResolvedDocument]) {
+      d.asInstanceOf[BestEntityMentionResolvedDocument].bestEntityMentionsBetween(offset(epart, ds), offset(epart, ds)+epart.text.length)
+    } else Nil
+  }
+
+  def printFull(kd: KbpDocument[_ <: Document with ExtractedSentenced]): Unit = {
 
     val d = kd.doc
-
-    def getLinks(epart: ExtractionPart, ds: DocumentSentence[SENT]) = d.linksBetween(offset(epart, ds), offset(epart, ds)+epart.text.length)
-    def getBestEntityMentions(epart: ExtractionPart, ds: DocumentSentence[SENT]) = d.bestEntityMentionsBetween(offset(epart, ds), offset(epart, ds)+epart.text.length)
 
     for (docSent <- d.sentences) {
 
       for (e <- docSent.sentence.extractions) {
 
-        val arg1Links = getLinks(e.arg1, docSent)
-        val arg1BestMentions = getBestEntityMentions(e.arg1, docSent)
-        val arg2Links = getLinks(e.arg2, docSent)
-        val arg2BestMentions = getBestEntityMentions(e.arg2, docSent)
-        val bestArg1Display = getBestDisplayMention(e.arg1, docSent, arg1Links, arg1BestMentions)
-        val bestArg2Display = getBestDisplayMention(e.arg2, docSent, arg2Links, arg2BestMentions)
+        val arg1Links = getLinks(e.arg1, d, docSent)
+        val arg1BestMentions = getBestEntityMentions(e.arg1, d, docSent)
+        val arg2Links = getLinks(e.arg2, d, docSent)
+        val arg2BestMentions = getBestEntityMentions(e.arg2, d, docSent)
+        val bestArg1Display = getBestDisplayMention(e.arg1, d, docSent)
+        val bestArg2Display = getBestDisplayMention(e.arg2, d, docSent)
         val arg1Changed = bestArg1Display != e.arg1.text
         val arg2Changed = bestArg2Display != e.arg2.text
         if (arg1Changed || arg2Changed) {

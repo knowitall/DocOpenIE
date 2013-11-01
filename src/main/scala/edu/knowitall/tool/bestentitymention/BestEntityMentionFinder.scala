@@ -24,8 +24,10 @@ trait BestEntityMentionFinder{
 }
 
 
-trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument[BestEntityMention]{
+trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument {
   this: Document  =>
+
+  override type B = BestEntityMention
 
   private lazy val NERAnnotator = {
     	val nerProperties = new Properties();
@@ -579,7 +581,6 @@ object BestEntityMentionFinderOriginalAlgorithm{
 
   val provinceCityMap = scala.collection.mutable.Map[String,Set[String]]()
   val countryCityMap = scala.collection.mutable.Map[String,Set[String]]()
-
 
   // read in tipster lines with latin encoding so as not to get errors.
   scala.io.Source.fromFile(tipsterFile.getPath())(scala.io.Codec.ISO8859).getLines.foreach(line => {

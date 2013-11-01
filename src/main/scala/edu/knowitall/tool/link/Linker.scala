@@ -28,8 +28,10 @@ trait Linker {
 }
 
 
-trait OpenIELinked extends LinkedDocument[FreeBaseLink] {
+trait OpenIELinked extends LinkedDocument {
   this: Document with Sentenced[Sentence with OpenIEExtracted] =>
+
+  override type L = FreeBaseLink
 
   // Hardcoded threshold for linker score.
   val minCombinedScore = 4.5

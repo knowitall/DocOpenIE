@@ -67,7 +67,7 @@ object DocOpenIEMain {
     val evalPrinter = new EvaluationPrinter(psout)
     evalPrinter.printColumnHeaderString()
     extractedDocuments.foreach { ed =>
-      evalPrinter.printCoref(ed)
+      evalPrinter.printFull(ed)
     }
     psout.flush()
     System.err.println("Total extractions: " + extractedDocuments.flatMap(_.doc.sentences.map(_.sentence.extractions)).size)
