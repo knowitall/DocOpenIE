@@ -22,31 +22,44 @@ import edu.knowitall.repr.document.Sentenced
 import edu.knowitall.browser.entity.EntityLinker
 import scala.collection.JavaConverters._
 
-trait Linker {
-
-  type link <: Link
-
-  type document <: Document
-
-  def link(doc: document): Seq[link]
-}
 
 trait OpenIELinked extends LinkedDocument {
   this: Document with Sentenced[Sentence with OpenIEExtracted] =>
 
   override type L = FreeBaseLink
 
-  // Hardcoded threshold for linker score.
-  val minCombinedScore = 4.5
+  import OpenIELinked.Context
 
+  def links: Seq[L]
+  /**
+   * (arg to be linked, "cleaned" version of it's string, Seq[Context Sentence])
+   */
+  def argContexts: Seq[(ExtractionPart, String, Context)]
+
+
+}
+
+
+object OpenIELinked {
   case class Context(
-      source: DocumentSentence[Sentence with OpenIEExtracted],
-      extended: Seq[DocumentSentence[Sentence with OpenIEExtracted]],
-      clusters: Seq[MentionCluster[_]]) {
+    source: DocumentSentence[Sentence with OpenIEExtracted],
+    extended: Seq[DocumentSentence[Sentence with OpenIEExtracted]],
+    clusters: Seq[MentionCluster[_]]) {
 
     def fullText = (source +: extended).distinct.map(_.sentence.text)
     def size = extended.size + 1 // +1 for the required source field.
   }
+}
+
+trait OpenIELinker extends OpenIELinked {
+  this: Document with Sentenced[Sentence with OpenIEExtracted] =>
+
+  override type L = FreeBaseLink
+
+  import OpenIELinked.Context
+
+  // Hardcoded threshold for linker score.
+  val minCombinedScore = 0.0
 
   private def sentenceContaining(chStart: Int, chEnd: Int): Option[DocumentSentence[Sentence with OpenIEExtracted]] = {
     this.sentences.find { s =>
@@ -108,7 +121,7 @@ trait OpenIELinked extends LinkedDocument {
   /**
    * Pairs of (argument, context)
    */
-  lazy val argContexts = this.sentences.flatMap { s =>
+  lazy val argContexts: Seq[(ExtractionPart, String, Context)] = this.sentences.flatMap { s =>
     // Get arguments to send to the linker
     val args = s.sentence.extractions.flatMap(e => e.arg1 :: e.arg2 :: Nil).distinct
     val cleanArgs = args map cleanArg(s)
