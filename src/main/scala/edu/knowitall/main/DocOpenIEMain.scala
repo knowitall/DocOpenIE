@@ -15,6 +15,8 @@ import edu.knowitall.repr.sentence.Sentence
 import edu.knowitall.repr.document.DocumentSentence
 import edu.knowitall.repr.document.Document
 import edu.knowitall.repr.document.Sentenced
+import edu.knowitall.tool.link.OpenIELinked
+import edu.knowitall.repr.link.LinkedDocument
 import edu.knowitall.tool.document.OpenIEDocumentExtractor
 import edu.knowitall.tool.document.OpenIEBaselineExtractor
 import edu.knowitall.tool.document.OpenIENoCorefDocumentExtractor
@@ -59,7 +61,7 @@ object DocOpenIEMain {
     val sentencedDocuments = loadSentencedDocs(args(0))
 
     val baselineSystem = new OpenIEBaselineExtractor()
-    val comparisonSystem = new OpenIEDocumentExtractor()
+    val comparisonSystem = new OpenIENoCorefDocumentExtractor()
 
     val baselineDocuments = sentencedDocuments.map(kd => kd.copy(doc=baselineSystem.extract(kd.doc)))
     val comparisonDocuments = sentencedDocuments.map(kd => kd.copy(doc=comparisonSystem.extract(kd.doc)))
@@ -77,7 +79,11 @@ object DocOpenIEMain {
     System.err.println("Total extractions: " + comparisonDocuments.flatMap(_.doc.sentences.map(_.sentence.extractions)).size)
     System.err.println("(String-)Changed extractions: " + evalPrinter.extractionsPrintedCount)
     System.err.println("Baseline Linked extractions (arg1 or arg2): " + baselineDocuments.flatMap(_.doc.links).size)
-    System.err.println("Comparison Linked extractions (arg1 or arg2): " + comparisonDocuments.flatMap(_.doc.links).size)
+
+    val comparisonLinkCounts = comparisonDocuments.map(_.doc.links.size)
+
+    System.err.println("Comparison Linked extractions (arg1 or arg2): " + comparisonLinkCounts.sum)
+
     psout.close()
   } { timeNs => System.err.println("Processing time: %s".format(Timing.Seconds.format(timeNs))) }
 
