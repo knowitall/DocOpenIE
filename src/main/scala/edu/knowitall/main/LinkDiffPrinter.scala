@@ -10,6 +10,7 @@ import edu.knowitall.repr.link.Link
 import edu.knowitall.tool.document.OpenIEBaselineExtractor
 import edu.knowitall.tool.document.OpenIEDocumentExtractor
 import edu.knowitall.tool.document.OpenIENoCorefDocumentExtractor
+import edu.knowitall.tool.document.OpenIECorefExpandedDocumentExtractor
 
 object LinkDiffPrinter extends App {
 
@@ -17,16 +18,25 @@ object LinkDiffPrinter extends App {
 
   val sentencedDocuments = loadSentencedDocs(args(0))
 
-  val extractor = new OpenIEDocumentExtractor()
+  val baseline = new OpenIEBaselineExtractor()
+  val rules = new OpenIEDocumentExtractor()
+  val coref = new OpenIENoCorefDocumentExtractor()
 
-  val extracted = sentencedDocuments map (kd => kd.copy(doc=extractor.extract(kd.doc)))
+
+  val baselineExtracted = sentencedDocuments.map(kd => kd.copy(doc=baseline.extract(kd.doc)))
+  val rulesExtracted = sentencedDocuments.map(kd => kd.copy(doc=rules.extract(kd.doc)))
+  val corefExtracted = sentencedDocuments.map(kd => kd.copy(doc=coref.extract(kd.doc)))
+
+  val zippedDocs = baselineExtracted.zip(rulesExtracted).zip(corefExtracted)
 
   val psout = new java.io.PrintStream(args(1))
 
   val diffPrinter = new LinkDiffPrinter(psout)
   psout.println(diffPrinter.columnHeaderString)
-  extracted.map { extrDoc =>
-    diffPrinter.printAll("RULES", extrDoc)
+  zippedDocs.foreach { case ((baseDoc, rulesDoc), corefDoc) =>
+    diffPrinter.printAll("BASELINE", baseDoc)
+    diffPrinter.printAll("RULES", rulesDoc)
+    diffPrinter.printAll("COREF", corefDoc)
   }
   psout.flush()
   psout.close()
@@ -34,12 +44,12 @@ object LinkDiffPrinter extends App {
 
 class LinkDiffPrinter(out: java.io.PrintStream) {
 
-  type LinkedDocument = KbpDocument[_ <: Document with Sentenced[_ <: Sentence] with OpenIELinked]
+  type LKBPDoc = KbpDocument[_ <: Document with Sentenced[_ <: Sentence] with OpenIELinked]
 
   // links are distinct given an offset, the text they linked to, and their link ID.
   private def linkKey(l: FreeBaseLink) = (l.offset, l.text, l.id)
 
-  def printDiff(oldDoc: LinkedDocument, newDoc: LinkedDocument): Unit = {
+  def printDiff(oldDoc: LKBPDoc, newDoc: LKBPDoc): Unit = {
 
     require(oldDoc.docId.equals(newDoc.docId), "Link diff should be for the same doc.")
 
@@ -60,16 +70,16 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
     }
   }
 
-  def printAll(runName: String, doc: LinkedDocument): Unit = {
+  def printAll(runName: String, doc: LKBPDoc): Unit = {
     doc.doc.links foreach { link =>
       out.println(linkString(runName, link, doc))
     }
   }
 
-  val columnHeaders = Seq("SOURCE", "OFFSET", "ORIGINAL TEXT", "WIKI TITLE", "FB ID", "TYPES", "COMBINED SCORE", "DOC SIM SCORE", "INLINKS", "CROSSWIKIS SCORE", "CONTEXT CLUSTER MENTIONS", "CONTEXT SIZE", "CONTEXT", "DOC ID")
+  val columnHeaders = Seq("SOURCE", "OFFSET", "ORIGINAL TEXT", "CLEANED TEXT", "WIKI TITLE", "FB ID", "TYPES", "COMBINED SCORE", "DOC SIM SCORE", "INLINKS", "CROSSWIKIS SCORE", "CONTEXT CLUSTER MENTIONS", "CONTEXT SIZE", "CONTEXT", "DOC ID")
   val columnHeaderString = columnHeaders.mkString("\t")
 
-  def linkString(name: String, link: FreeBaseLink, kbpDoc: LinkedDocument): String = {
+  def linkString(name: String, link: FreeBaseLink, kbpDoc: LKBPDoc): String = {
 
     val argContexts = kbpDoc.doc.argContexts.toSeq.filter { case (arg, _, ctxt) =>
       val chStartMatch = link.offset == arg.offset + ctxt.source.offset
@@ -93,15 +103,16 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
       texts.mkString("[", "] [", "]")
     }.getOrElse("[]")
     val contextSize = context.map(_._3.size).getOrElse(0)
-    val fields = Seq(name) ++ linkFields(link) ++ Seq(contextMentions, contextSize.toString, contextString, kbpDoc.docId)
+    val cleanString = context.map(_._2).getOrElse("NA")
+    val fields = Seq(name) ++ linkFields(link, cleanString) ++ Seq(contextMentions, contextSize.toString, contextString, kbpDoc.docId)
     fields.map(EvaluationPrinter.clean).mkString("\t")
   }
 
-  def linkFields(f: FreeBaseLink): Seq[String] = {
+  def linkFields(f: FreeBaseLink, cleanString: String): Seq[String] = {
 
     def fmt(d: Double) = "%.02f" format d
     val types = f.types.take(2).mkString(", ") + { if (f.types.size > 2) ", ..." else "" }
-    val fields = Seq(f.offset.toString, f.text, f.name, f.id, types, fmt(f.score), fmt(f.docSimScore), fmt(f.inlinks), fmt(f.candidateScore))
+    val fields = Seq(f.offset.toString, f.text, cleanString, f.name, f.id, types, fmt(f.score), fmt(f.docSimScore), fmt(f.inlinks), fmt(f.candidateScore))
     fields
   }
 }
