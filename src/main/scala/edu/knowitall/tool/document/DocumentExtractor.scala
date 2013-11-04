@@ -17,6 +17,7 @@ import edu.knowitall.tool.coref.StanfordCorefResolver
 import edu.knowitall.tool.coref.Mention
 import edu.knowitall.tool.stem.MorphaStemmer
 import edu.knowitall.tool.link.OpenIELinked
+import edu.knowitall.tool.link.OpenIELinker
 import edu.knowitall.browser.entity.EntityLinker
 import java.io.File
 import edu.knowitall.tool.bestentitymention.BestEntityMentionsFound
@@ -68,7 +69,7 @@ class OpenIEDocumentExtractor {
       DocumentSentence(prepSentence(sentence), offset)
     }
 
-    new Document(d.text) with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound {
+    new Document(d.text) with OpenIELinker with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound {
       type M = Mention
       val clusters = stanfordResolver.resolve(d)
       val sentences = preppedSentences
@@ -90,7 +91,7 @@ class OpenIENoCorefDocumentExtractor {
 
   def extract(d: Document with Sentenced[_ <: Sentence]): Document with OpenIELinked with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound = {
 
-    new Document(d.text) with OpenIELinked with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound {
+    new Document(d.text) with OpenIELinker with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound {
       val sentences = prepAllSentences(d)
       val linker = entityLinker
       val bestEntityMentionFinder = bestEntityMentionFinderAlgorithm
@@ -107,7 +108,7 @@ class OpenIEBaselineExtractor {
 
   def extract(d: Document with Sentenced[_ <: Sentence]): Document with OpenIELinked with Sentenced[Sentence with OpenIEExtracted] = {
 
-    new Document(d.text) with OpenIELinked with Sentenced[Sentence with OpenIEExtracted] {
+    new Document(d.text) with OpenIELinker with Sentenced[Sentence with OpenIEExtracted] {
       val sentences = prepAllSentences(d)
       val linker = entityLinker
     }
@@ -149,9 +150,9 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) {
     for(m <- cluster.mentions; if m.isPronoun) yield BestEntityMention(m.text,m.offset,bestName)
   }
 
-  def extract(d: Document with Sentenced[_ <: Sentence]): Document with LinkedDocument with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionResolvedDocument = {
+  def extract(d: Document with Sentenced[_ <: Sentence]): Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionResolvedDocument = {
 
-    val doc  = new Document(d.text) with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound {
+    val doc  = new Document(d.text) with OpenIELinker with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound {
       type M = Mention
       val clusters = stanfordResolver.resolve(d)
       val sentences = prepAllSentences(d)
@@ -211,10 +212,10 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) {
 	      }
 	    }
     }
-    val newDoc = new Document(d.text) with LinkedDocument with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionResolvedDocument {
+    val newDoc = new Document(d.text) with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionResolvedDocument {
       type M = Mention
       type B = BestEntityMention
-      type L = FreeBaseLink
+      override val argContexts = doc.argContexts
       val links = doc.links
       val clusters = doc.clusters
       val sentences = doc.sentences
