@@ -10,26 +10,19 @@ import edu.knowitall.tool.sentence.OpenIEExtracted
 
 trait CorefResolver {
 
-  type mention <: Mention
-
-  type document <: Document
-
-  def resolve(doc: document): Seq[MentionCluster[mention]]
+  def resolve(doc: Document): Seq[MentionCluster]
 }
 
+case class StanfordMentionCluster(val best: Mention, val mentions: Seq[Mention]) extends MentionCluster
+
 class StanfordCorefResolver() extends CorefResolver {
-  type mention = Mention
-  type document = Document
 
   val coref = new StanfordCoreferenceResolver()
 
-  override def resolve(doc: Document): Seq[MentionCluster[Mention]] = {
+  override def resolve(doc: Document): Seq[MentionCluster] = {
     val clusters = coref.clusters(doc.text)
     clusters.iterator.toSeq.map { case (bestMention, allMentions) =>
-      new MentionCluster[Mention] {
-        def best = bestMention
-        def mentions = allMentions
-      }
+      StanfordMentionCluster(bestMention, allMentions)
     }
   }
 }

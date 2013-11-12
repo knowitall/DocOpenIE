@@ -15,56 +15,30 @@ import edu.knowitall.repr.sentence.Sentence
 import edu.knowitall.repr.document.DocumentSentence
 import edu.knowitall.repr.document.Document
 import edu.knowitall.repr.document.Sentenced
+import edu.knowitall.repr.document.KbpDocumentSentencer
 import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.repr.link.LinkedDocument
 import edu.knowitall.tool.document.OpenIEDocumentExtractor
 import edu.knowitall.tool.document.OpenIEBaselineExtractor
 import edu.knowitall.tool.document.OpenIENoCorefDocumentExtractor
 import edu.knowitall.tool.document.OpenIECorefExpandedDocumentExtractor
-
-case class KbpDocument[D <: Document](val doc: D, val docId: String)
+import edu.knowitall.repr.document.DocumentParser
 
 object DocOpenIEMain {
-
-  val kbpSentencer = Sentencer.defaultInstance
-
-  def loadKbpDocs(path: String): Seq[(File, KbpRawDoc, KbpProcessedDoc)] = {
-
-    val docPath = new File(path)
-
-    val docFiles = docPath.listFiles().filter(_.getName().endsWith("sgm"))
-
-    val rawDocs = docFiles flatMap loadKbpDoc
-
-    rawDocs map { case (file, doc) => (file, doc, processDoc(file, doc)) }
-  }
-
-  def loadSentencedDocs(path: String) = {
-    loadKbpDocs(path).toSeq.map { case (file, rawDoc, procDoc) =>
-      val text = rawDoc.getString
-      val kbpSentences = kbpSentencer.convertToSentences(procDoc)
-      val doc = new Document(text) with Sentenced[Sentence] {
-        override val sentences = kbpSentences.toStream.map { ks =>
-          val sent = new Sentence(ks.text)
-          DocumentSentence(sent, ks.offset)
-        }
-      }
-      KbpDocument(doc, procDoc.extractDocId.get)
-    }
-  }
 
  /**
   * Usage: provide path to KBP sample documents.
   */
   def main(args: Array[String]): Unit = Timing.timeThen {
 
-    val sentencedDocuments = loadSentencedDocs(args(0))
-
+    val sentencedDocuments = KbpDocumentSentencer.loadSentencedDocs(args(0))
+    val parsedDocuments = sentencedDocuments.map(DocumentParser.defaultInstance.parse)
+    
     val baselineSystem = new OpenIEBaselineExtractor()
     val comparisonSystem = new OpenIENoCorefDocumentExtractor()
 
-    val baselineDocuments = sentencedDocuments.map(kd => kd.copy(doc=baselineSystem.extract(kd.doc)))
-    val comparisonDocuments = sentencedDocuments.map(kd => kd.copy(doc=comparisonSystem.extract(kd.doc)))
+    val baselineDocuments = parsedDocuments.map(baselineSystem.extract)
+    val comparisonDocuments = parsedDocuments.map(comparisonSystem.extract)
     val docPairs = baselineDocuments.zip(comparisonDocuments)
 
 
@@ -76,11 +50,11 @@ object DocOpenIEMain {
       evalPrinter.printFull(baseline, comparison)
     }
     psout.flush()
-    System.err.println("Total extractions: " + comparisonDocuments.flatMap(_.doc.sentences.map(_.sentence.extractions)).size)
+    System.err.println("Total extractions: " + comparisonDocuments.flatMap(_.sentences.map(_.sentence.extractions)).size)
     System.err.println("(String-)Changed extractions: " + evalPrinter.extractionsPrintedCount)
-    System.err.println("Baseline Linked extractions (arg1 or arg2): " + baselineDocuments.flatMap(_.doc.links).size)
+    System.err.println("Baseline Linked extractions (arg1 or arg2): " + baselineDocuments.flatMap(_.links).size)
 
-    val comparisonLinkCounts = comparisonDocuments.map(_.doc.links.size)
+    val comparisonLinkCounts = comparisonDocuments.map(_.links.size)
 
     System.err.println("Comparison Linked extractions (arg1 or arg2): " + comparisonLinkCounts.sum)
 
@@ -106,4 +80,3 @@ object DocOpenIEMain {
     docs.map((docFile, _))
   }
 }
-

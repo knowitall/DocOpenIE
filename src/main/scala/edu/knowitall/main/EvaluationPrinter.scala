@@ -1,7 +1,9 @@
 package edu.knowitall.main
 
 import edu.knowitall.repr.document.Document
+import edu.knowitall.repr.document.ParsedDocument
 import edu.knowitall.repr.document.DocumentSentence
+import edu.knowitall.repr.document.DocId
 import edu.knowitall.repr.document.Sentenced
 import edu.knowitall.repr.sentence.Sentence
 import edu.knowitall.repr.extraction.Extraction
@@ -40,24 +42,24 @@ class EvaluationPrinter(out: java.io.PrintStream) {
   type BaselineTraits = OpenIELinked with ExtractedSentenced
   type FullTraits = OpenIELinked with ExtractedSentenced with BestEntityMentionsFound
 
-  type ExtractedKbpDoc = KbpDocument[_ <: Document with ExtractedSentenced]
+  type ExtractedKbpDoc = Document with ExtractedSentenced with OpenIELinked with DocId
 
   val columnHeaders = Seq(
-      "Best Arg1",
-      "Rel",
-      "Best Arg2",
-      "Original Arg1",
-      "Original Arg2",
-      "Sentence Text",
-      "Arg1 Best Mentions",
-      "Arg2 Best Mentions",
-      "Arg1 Links",
-      "Arg2 Links",
-      "Original Arg1 Links",
-      "Original Arg2 Links",
-      "Doc ID",
-      "Arg1 Changed?",
-      "Arg2 Changed?")
+    "Best Arg1",
+    "Rel",
+    "Best Arg2",
+    "Original Arg1",
+    "Original Arg2",
+    "Sentence Text",
+    "Arg1 Best Mentions",
+    "Arg2 Best Mentions",
+    "Arg1 Links",
+    "Arg2 Links",
+    "Original Arg1 Links",
+    "Original Arg2 Links",
+    "Doc ID",
+    "Arg1 Changed?",
+    "Arg2 Changed?")
 
   val columnHeaderString = columnHeaders.mkString("\t")
 
@@ -85,12 +87,12 @@ class EvaluationPrinter(out: java.io.PrintStream) {
   def getBestDisplayMention(epart: ExtractionPart, d: Document with ExtractedSentenced, ds: DocumentSentence[SENT]) = {
     val links = getLinks(epart, d, ds)
     val bestMentions = getBestEntityMentions(epart, d, ds)
-    val subs = (links.map(_.substitution)++bestMentions.map(_.substitution))
+    val subs = (links.map(_.substitution) ++ bestMentions.map(_.substitution))
     val filtered = getNonOverlappingSubstitutions(subs)
     if (filtered.isEmpty) epart.text
     else {
       val eOffset = offset(epart, ds)
-      val indexedText = epart.text.zipWithIndex.map(p => (p._1, p._2+eOffset))
+      val indexedText = epart.text.zipWithIndex.map(p => (p._1, p._2 + eOffset))
       val fixedSubs = filtered.map(_.fixPossessive)
       val subIntervals = fixedSubs.map { s => (Interval.open(s.mention.offset, s.mention.offset + s.mention.text.length), s.best.text) }
       val substituted = CoreferenceResolver.substitute(indexedText, subIntervals)
@@ -106,23 +108,20 @@ class EvaluationPrinter(out: java.io.PrintStream) {
 
   def getLinks(epart: ExtractionPart, d: Document, ds: DocumentSentence[SENT]) = {
     if (d.isInstanceOf[LinkedDocument]) {
-      d.asInstanceOf[LinkedDocument].linksBetween(offset(epart, ds), offset(epart, ds)+epart.text.length)
+      d.asInstanceOf[LinkedDocument].linksBetween(offset(epart, ds), offset(epart, ds) + epart.text.length)
     } else Nil
   }
 
   def getBestEntityMentions(epart: ExtractionPart, d: Document, ds: DocumentSentence[SENT]) = {
     if (d.isInstanceOf[BestEntityMentionResolvedDocument]) {
-      d.asInstanceOf[BestEntityMentionResolvedDocument].bestEntityMentionsBetween(offset(epart, ds), offset(epart, ds)+epart.text.length)
+      d.asInstanceOf[BestEntityMentionResolvedDocument].bestEntityMentionsBetween(offset(epart, ds), offset(epart, ds) + epart.text.length)
     } else Nil
   }
 
-  def printFull(baseline: ExtractedKbpDoc, comparison: ExtractedKbpDoc): Unit = {
-
-    val baseDoc = baseline.doc
-    val compDoc = comparison.doc
+  def printFull(baseDoc: ExtractedKbpDoc, compDoc: ExtractedKbpDoc): Unit = {
 
     // we assume sentencing and extractions are the same....
-    val sentencePairs = baseline.doc.sentences.zip(comparison.doc.sentences)
+    val sentencePairs = baseDoc.sentences.zip(compDoc.sentences)
 
     for ((baseSent, compSent) <- sentencePairs) {
 
@@ -158,22 +157,21 @@ class EvaluationPrinter(out: java.io.PrintStream) {
           val arg2ChangedString = if (bestCompArg2 != bestBaseArg1) "YES" else "NO"
 
           val fields = Seq(
-              bestCompArg1,
-              compExtr.rel.text,
-              bestCompArg2,
-              bestBaseArg1,
-              bestBaseArg2,
-              compSent.sentence.text,
-              arg1BestMentionsString,
-              arg2BestMentionsString,
-              compArg1LinksString,
-              compArg2LinksString,
-              baseArg1LinksString,
-              baseArg2LinksString,
-              comparison.docId.trim,
-              arg1ChangedString,
-              arg2ChangedString)
-
+            bestCompArg1,
+            compExtr.rel.text,
+            bestCompArg2,
+            bestBaseArg1,
+            bestBaseArg2,
+            compSent.sentence.text,
+            arg1BestMentionsString,
+            arg2BestMentionsString,
+            compArg1LinksString,
+            compArg2LinksString,
+            baseArg1LinksString,
+            baseArg2LinksString,
+            compDoc.docId.trim,
+            arg1ChangedString,
+            arg2ChangedString)
 
           out.println(fields.map(clean).mkString("\t"))
           extractionsPrintedCount += 1

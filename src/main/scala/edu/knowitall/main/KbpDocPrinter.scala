@@ -1,6 +1,7 @@
 package edu.knowitall.main
 
 import edu.knowitall.repr.document.Document
+import edu.knowitall.repr.document.DocId
 import edu.knowitall.repr.document.DocumentSentence
 import edu.knowitall.repr.document.Sentenced
 import edu.knowitall.repr.sentence.Sentence
@@ -19,11 +20,9 @@ import edu.knowitall.tool.bestentitymention.BestEntityMentionsFound
  */
 class KbpDocPrinter(out: java.io.PrintStream) {
 
-  def print(kbpDoc: KbpDocument[Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound ]): Unit = {
+  def print(doc: Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound with DocId): Unit = {
 
-    val KbpDocument(doc, docId) = kbpDoc
-
-    out.println(docId)
+    out.println(doc.docId)
     out.println("Number of sentences: " + doc.sentences.size)
     out.println("Number of extractions: " + doc.sentences.flatMap(_.sentence.extractions).size)
     out.println("Number of FreeBase links: " + doc.links.size)

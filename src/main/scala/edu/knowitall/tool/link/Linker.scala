@@ -44,7 +44,7 @@ object OpenIELinked {
   case class Context(
     source: DocumentSentence[Sentence with OpenIEExtracted],
     extended: Seq[DocumentSentence[Sentence with OpenIEExtracted]],
-    clusters: Seq[MentionCluster[_]]) {
+    clusters: Seq[MentionCluster]) {
 
     def fullText = (source +: extended).distinct.map(_.sentence.text)
     def size = extended.size + 1 // +1 for the required source field.
@@ -135,7 +135,7 @@ trait OpenIELinker extends OpenIELinked {
         val chStart = argStartToken.offset + s.offset
         val chEnd = argEndToken.offset + argEndToken.string.length + s.offset
         val thisCoref = this.asInstanceOf[CorefResolved]
-        def otherMentions = thisCoref.mentionsBetween(chStart, chEnd).map(_.asInstanceOf[thisCoref.M])
+        def otherMentions = thisCoref.mentionsBetween(chStart, chEnd).map(_.asInstanceOf[Mention])
         val otherClusters = otherMentions.flatMap(thisCoref.cluster)
         val otherClusterMentions = otherClusters.flatMap(_.mentions)
         val extended = otherClusterMentions.flatMap { m =>
