@@ -9,7 +9,7 @@ import edu.knowitall.common.Resource.using
 
 object KbpDocSerializer extends App {
 
-  val sentencedDocuments = KbpDocumentSentencer.loadSentencedDocs(args(0))
+  val sentencedDocuments = KbpDocumentSentencer.loadSentencedDocs(args(0)).take(1)
 
   val outputDir = new File(args(1))
   

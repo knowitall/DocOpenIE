@@ -41,8 +41,7 @@ case class DocumentParser(val parser: DependencyParser, chunker: Chunker, stemme
       new Sentence(s.text) with Parsed with Chunked with Lemmatized {
         override val lemmatizedTokens = chunkTokens map stemmer.stemToken
         private val dgraphString = DependencyGraph.stringFormat.write(parse)
-        @transient
-        override lazy val dgraph = DependencyGraph.stringFormat.read(dgraphString)
+        override def dgraph = DependencyGraph.stringFormat.read(dgraphString)
         override val tokens = chunkTokens
       }
     }
