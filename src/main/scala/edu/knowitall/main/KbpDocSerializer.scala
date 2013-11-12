@@ -13,6 +13,8 @@ object KbpDocSerializer extends App {
 
   val outputDir = new File(args(1))
   
+  if (!outputDir.exists()) outputDir.mkdir()
+  
   val parsedDocuments = sentencedDocuments.map(DocumentParser.defaultInstance.parse)
   
   for (pd <- parsedDocuments) {

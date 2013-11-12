@@ -7,6 +7,7 @@ import edu.knowitall.repr.sentence.Chunked
 import edu.knowitall.repr.sentence.Parsed
 import edu.knowitall.repr.sentence.Lemmatized
 import edu.knowitall.tool.parse.DependencyParser
+import edu.knowitall.tool.parse.graph.DependencyGraph
 import edu.knowitall.tool.parse.ClearParser
 import edu.knowitall.tool.coref.CorefResolver
 import edu.knowitall.tool.coref.StanfordCorefResolver
@@ -39,7 +40,9 @@ case class DocumentParser(val parser: DependencyParser, chunker: Chunker, stemme
       val chunkTokens = chunker.chunkPostagged(postokens)
       new Sentence(s.text) with Parsed with Chunked with Lemmatized {
         override val lemmatizedTokens = chunkTokens map stemmer.stemToken
-        override val dgraph = parse
+        private val dgraphString = DependencyGraph.stringFormat.write(parse)
+        @transient
+        override lazy val dgraph = DependencyGraph.stringFormat.read(dgraphString)
         override val tokens = chunkTokens
       }
     }
