@@ -49,7 +49,7 @@ object OpenIEDocumentExtractor {
   type BaseOutputDoc = Document with OpenIELinked with Sentenced[_ <: BaseOutputSentence] with DocId
   
   
-  val entityLinker = new EntityLinker(new File("/scratch/resources/entitylinkingResources/"))
+  val entityLinker = new EntityLinker(new File("/scratch/"))
   val bestEntityMentionFinderAlgorithm = new BestEntityMentionFinderOriginalAlgorithm()
   
   def extractSentence(s: BaseInputSentence): Sentence with OpenIEExtracted = {

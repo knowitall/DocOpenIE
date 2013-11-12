@@ -23,27 +23,45 @@ import edu.knowitall.tool.document.OpenIEBaselineExtractor
 import edu.knowitall.tool.document.OpenIENoCorefDocumentExtractor
 import edu.knowitall.tool.document.OpenIECorefExpandedDocumentExtractor
 import edu.knowitall.repr.document.DocumentParser
+import java.io.PrintStream
 
 object DocOpenIEMain {
 
+  def timeAndPrint[R](id: String, ps: PrintStream)(block: => R) = {
+    val result = Timing.timeThen(block) { timeNs =>
+      ps.println(s"$id running time: " + Timing.Seconds.format(timeNs))
+    }
+    result
+  }
+  
  /**
   * Usage: provide path to KBP sample documents.
   */
   def main(args: Array[String]): Unit = Timing.timeThen {
-
-    val sentencedDocuments = KbpDocumentSentencer.loadSentencedDocs(args(0))
-    val parsedDocuments = sentencedDocuments.map(DocumentParser.defaultInstance.parse)
     
-    val baselineSystem = new OpenIEBaselineExtractor()
-    val comparisonSystem = new OpenIENoCorefDocumentExtractor()
-
-    val baselineDocuments = parsedDocuments.map(baselineSystem.extract)
-    val comparisonDocuments = parsedDocuments.map(comparisonSystem.extract)
-    val docPairs = baselineDocuments.zip(comparisonDocuments)
-
-
     val outFile = new File(args(1))
     val psout = new java.io.PrintStream(outFile)
+    
+    System.err.println("Initializing...")
+    val (baselineSystem, comparisonSystem, parsedDocuments) = timeAndPrint("Initialization", psout) {
+      val bs = new OpenIEBaselineExtractor()
+      val cs = new OpenIECorefExpandedDocumentExtractor()
+      val sd = KbpDocumentSentencer.loadSentencedDocs(args(0))
+      val pd = sd.map(DocumentParser.defaultInstance.parse).toList
+      bs.extract(pd.head)
+      cs.extract(pd.head)
+      (bs, cs, pd)
+    }
+    val baselineDocuments = timeAndPrint("baseline", psout) {
+      parsedDocuments.map(baselineSystem.extract)
+    }
+
+    val comparisonDocuments = timeAndPrint("comparison", psout) {
+      parsedDocuments.map(comparisonSystem.extract)
+    }
+
+    val docPairs = baselineDocuments.zip(comparisonDocuments)
+
     val evalPrinter = new EvaluationPrinter(psout)
     evalPrinter.printColumnHeaderString()
     docPairs.foreach { case (baseline, comparison) =>

@@ -154,7 +154,7 @@ class EvaluationPrinter(out: java.io.PrintStream) {
           val arg2BestMentionsString = arg2BestMentions.map(_.debugString).mkString("[", ", ", "]")
 
           val arg1ChangedString = if (bestCompArg1 != bestBaseArg1) "YES" else "NO"
-          val arg2ChangedString = if (bestCompArg2 != bestBaseArg1) "YES" else "NO"
+          val arg2ChangedString = if (bestCompArg2 != bestBaseArg2) "YES" else "NO"
 
           val fields = Seq(
             bestCompArg1,
