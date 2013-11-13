@@ -155,9 +155,7 @@ trait OpenIELinker extends OpenIELinked {
   def linker: EntityLinker
 
   lazy val links: Seq[FreeBaseLink] = argContexts.flatMap { case (arg, cleaned, context) =>
-    System.err.print("running linker...")
     val elink = linker.getBestEntity(cleaned, context.fullText).filter(_.combinedScore >= minCombinedScore)
-    System.err.println("done")
     val linkedMention = elink.map { l =>
       val offset = context.source.sentence.tokens(arg.tokenIndices.head).offset + context.source.offset
       FreeBaseLink(arg.text, offset, l.entity.name, l.combinedScore, l.docSimScore, l.candidateScore, l.inlinks, l.entity.fbid, l.entity.retrieveTypes().asScala.toSeq)
