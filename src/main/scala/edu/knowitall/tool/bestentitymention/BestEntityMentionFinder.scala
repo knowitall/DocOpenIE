@@ -41,6 +41,7 @@ trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument {
     val stanfordSentences = scala.collection.JavaConversions.collectionAsScalaIterable(this.NERAnnotatedDoc.get(classOf[CoreAnnotations.SentencesAnnotation]))
     for (sen <- stanfordSentences) {
       val tokens = scala.collection.JavaConversions.collectionAsScalaIterable(sen.get(classOf[CoreAnnotations.TokensAnnotation]))
+      // get tokens that are of the right ner type
       val relevantTokens = {
         for (
           (tok, index) <- tokens.zipWithIndex;
@@ -51,6 +52,7 @@ trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument {
           tok
         }
       }
+      // split consecutive tokens of same type into Entity objects
       if (!relevantTokens.isEmpty) {
         var lastTok = relevantTokens.head
         var nerToks = List(lastTok)
@@ -80,6 +82,7 @@ trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument {
     val stanfordSentences = scala.collection.JavaConversions.collectionAsScalaIterable(this.NERAnnotatedDoc.get(classOf[CoreAnnotations.SentencesAnnotation]))
     for (sen <- stanfordSentences) {
       val tokens = scala.collection.JavaConversions.collectionAsScalaIterable(sen.get(classOf[CoreAnnotations.TokensAnnotation]))
+      // get tokens that are either org, loc, or per.
       val relevantTokens = {
         for (
           (tok, index) <- tokens.zipWithIndex;
@@ -90,6 +93,7 @@ trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument {
           tok
         }
       }
+      // split tokens into entity objects.
       if (!relevantTokens.isEmpty) {
         var lastTok = relevantTokens.head
         var nerToks = List(lastTok)
@@ -97,14 +101,12 @@ trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument {
           if ((lastTok.index() == (tok.index() - 1)) && (lastTok.ner() == tok.ner())) {
             nerToks = nerToks :+ tok
           } else {
-            val entityString = nerToks.map(f => f.originalText()).mkString(" ")
             entities = entities :+ Entity(this.text.substring(nerToks.head.beginPosition(), nerToks.last.endPosition()), nerToks.head.beginPosition(), lastTok.ner())
             nerToks = List(tok)
           }
           lastTok = tok
         }
         if (!nerToks.isEmpty) {
-          val entityString = nerToks.map(f => f.originalText()).mkString(" ")
           entities = entities :+ Entity(this.text.substring(nerToks.head.beginPosition(), nerToks.last.endPosition()), nerToks.head.beginPosition(), lastTok.ner())
         }
       }
@@ -161,61 +163,58 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
   }
 
   private def findBestOrganizationString(
-      originalName: String,
-      candidateStrings: List[Entity],
-      rawDoc: String,
-      begOffset: Integer,
-      namedEntities: NamedEntityCollection): BestEntityMention = {
+    originalName: String,
+    candidateStrings: List[Entity],
+    rawDoc: String,
+    begOffset: Integer,
+    namedEntities: NamedEntityCollection): BestEntityMention = {
 
     val originalString = originalName
     val sortedCandidateStrings = sortCandidateStringsByProximity(candidateStrings, begOffset)
 
-    try {
-      val accronymRegex = new Regex("\\([^\\)\\(]{0,15}" + originalString + "[^\\)\\(]{0,15}\\)")
-      //if the organization is an acronym
-      if (originalString.forall(p => p.isUpper) || accronymRegex.findFirstIn(rawDoc).isDefined) {
+    val accronymRegex = new Regex("\\([^\\)\\(]{0,15}" + originalString + "[^\\)\\(]{0,15}\\)")
 
-        for (cs <- sortedCandidateStrings) {
-          val words = cs.name.split(" ").filter(p => { p(0).isUpper }).takeRight(originalString.length())
-          var goodCandidate = true
-          var index = 0
-          if (words.length >= originalString.length()) {
-            for (word <- words) {
-              if (word(0) != originalString(index)) {
-                goodCandidate = false
+    //if the organization is an acronym
+    if (originalString.forall(p => p.isUpper) || accronymRegex.findFirstIn(rawDoc).isDefined) {
+
+      for (cs <- sortedCandidateStrings) {
+        val words = cs.name.split(" ").filter(p => { p(0).isUpper }).takeRight(originalString.length())
+        var goodCandidate = true
+        var index = 0
+        if (words.length >= originalString.length()) {
+          for (word <- words) {
+            if (word(0) != originalString(index)) {
+              goodCandidate = false
+            }
+            index += 1
+          }
+          if (goodCandidate) {
+            val candidateWords = cs.name.split(" ")
+            var index = 0
+            for (cw <- candidateWords) {
+              if (cw == words.head) {
+                // Expand "CDC" to "Centers for Disease Control" by checking acronym caps against head letters in candidate.
+                return BestEntityMention(originalString, begOffset, candidateWords.slice(index, candidateWords.length) mkString " ")
               }
               index += 1
             }
-            if (goodCandidate) {
-              val candidateWords = cs.name.split(" ")
-              var index = 0
-              for (cw <- candidateWords) {
-                if (cw == words.head) {
-                  return BestEntityMention(originalString, begOffset, candidateWords.slice(index, candidateWords.length) mkString " ")
-                }
-                index += 1
-              }
-            }
           }
         }
-
-        // if in parentheses and nothing was found...
-        //val parenthesisRegexPattern = new Regex("([A-Z]\\w+ (\\w+ )*[A-Z]\\w+)[\\.\\s]*\\([^\\)\\(]{0,5}"+originalString+"[^\\)\\(]{0,5}\\)")
-        val accRegexPattern = new Regex("([" + originalString(0).toUpper + originalString(originalString.length() - 1).toUpper + "][\\S]+ ([\\S]+ ){0,2}[A-Z][\\S]+).{0,15}" + originalString)
-        val accronymMatch = accRegexPattern.findFirstMatchIn(rawDoc)
-        if (accronymMatch.isDefined) {
-          var expandedString = accronymMatch.get.group(1)
-          if (BestEntityMentionFinderOriginalAlgorithm.stopWords.contains(expandedString.split(" ")(0).toLowerCase())) {
-            expandedString = expandedString.split(" ").drop(1).mkString(" ")
-          }
-          return BestEntityMention(originalString, begOffset, expandedString)
-        }
-
       }
-    } catch {
-      case e: Exception => {
 
-      }
+      //        // if in parentheses and nothing was found...
+      //        //val parenthesisRegexPattern = new Regex("([A-Z]\\w+ (\\w+ )*[A-Z]\\w+)[\\.\\s]*\\([^\\)\\(]{0,5}"+originalString+"[^\\)\\(]{0,5}\\)")
+      //        val accRegexPattern = new Regex("([" + originalString(0).toUpper + originalString(originalString.length() - 1).toUpper + "][\\S]+ ([\\S]+ ){0,2}[A-Z][\\S]+).{0,15}" + originalString)
+      //        val accronymMatch = accRegexPattern.findFirstMatchIn(rawDoc)
+      //        if (accronymMatch.isDefined) {
+      //          var expandedString = accronymMatch.get.group(1)
+      //          if (BestEntityMentionFinderOriginalAlgorithm.stopWords.contains(expandedString.split(" ")(0).toLowerCase())) {
+      //            expandedString = expandedString.split(" ").drop(1).mkString(" ")
+      //          }
+      //          // catch cases like "Centers for Disease Control (CDC)"... but broken right now
+      //          return BestEntityMention(originalString, begOffset, expandedString)
+      //        }
+
     }
 
     //non caps organization, check if there is a longer string than the original
@@ -242,6 +241,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
         if ((words.length > originalWords.length) &&
           ((words.takeRight(originalWords.length).mkString(" ") == originalString) ||
             (words.take(originalWords.length).mkString(" ") == originalString))) {
+          // Catch cases where a candidate is a word-prefix or suffix (e.g. Centers for Disease Control => U.S. Centers for Disease Control)
           return BestEntityMention(originalString, begOffset, words mkString " ")
         }
       }
@@ -250,6 +250,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
     //finally check if the original string if prefix of an organization
     for (cs <- sortedCandidateStrings) {
       if (cs.name.toLowerCase().startsWith(originalString.toLowerCase()) && cs.name.length() > originalString.length() && cs.name.split(" ").length == 1) {
+        // check if original string is a character-prefix of a one-word candidate.
         return BestEntityMention(originalString, begOffset, cs.name)
       }
     }
@@ -388,11 +389,11 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
     }
   }
   private def findBestPersonString(
-      originalName: String,
-      candidateStrings: List[Entity],
-      docText: String,
-      begOffset: Integer,
-      probablyPerson: Boolean): BestEntityMention = {
+    originalName: String,
+    candidateStrings: List[Entity],
+    docText: String,
+    begOffset: Integer,
+    probablyPerson: Boolean): BestEntityMention = {
 
     val originalString = originalName
     for (cs <- sortCandidateStringsByProximity(candidateStrings, begOffset)) {
@@ -410,9 +411,11 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
       //try a conservative name regex if nothing from Stanford NER was found
       val nameRegex = """(\.|(\s[a-z]+\s))([A-Z]\w+\s[A-Z]\w+)(\.|(\s[a-z]+\s))""".r
       val rawDoc = docText
-      val nameList = for (nameMatch <- nameRegex.findAllMatchIn(rawDoc).toList;
-                          name = nameMatch.group(3);
-                          if name.contains(originalString)) yield Entity(name, nameMatch.start(3), "PERSON")
+      val nameList = for (
+        nameMatch <- nameRegex.findAllMatchIn(rawDoc).toList;
+        name = nameMatch.group(3);
+        if name.contains(originalString)
+      ) yield Entity(name, nameMatch.start(3), "PERSON")
       if (nameList.headOption.isDefined) {
         val sortedNameList = sortCandidateStringsByProximity(nameList, begOffset)
         return BestEntityMention(originalName, begOffset, sortedNameList.head.name)
@@ -642,6 +645,5 @@ case class NamedEntityCollection(
   val organizations: List[Entity],
   val locations: List[Entity],
   val people: List[Entity])
-
 
 case class Entity(val name: String, val offset: Int, val entityType: String)
