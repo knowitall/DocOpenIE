@@ -344,7 +344,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
       val containerMap = scala.collection.mutable.Map[Entity, Int]()
       for (cs <- candidateStrings) {
         if (locationContainsLocation(cs.name, originalString)) {
-          if (cs != originalString && cs != "United States") {
+          if (cs.name != originalString && cs.name != "United States") {
             if (containerMap.contains(cs)) {
               containerMap += ((cs, containerMap.get(cs).get + 1))
             } else {
