@@ -33,21 +33,22 @@ object DocOpenIEMain {
     }
     result
   }
-  
+
  /**
   * Usage: provide path to KBP sample documents.
   */
   def main(args: Array[String]): Unit = Timing.timeThen {
-    
+
     val outFile = new File(args(1))
     val psout = new java.io.PrintStream(outFile)
-    
+
     System.err.println("Initializing...")
     val (baselineSystem, comparisonSystem, parsedDocuments) = timeAndPrint("Initialization", psout) {
       val bs = new OpenIEBaselineExtractor()
       val cs = new OpenIECorefExpandedDocumentExtractor()
-      val sd = KbpDocumentSentencer.loadSentencedDocs(args(0))
-      val pd = sd.map(DocumentParser.defaultInstance.parse).toList
+      //val sd = KbpDocumentSentencer.loadSentencedDocs(args(0))
+      //val pd = sd.map(DocumentParser.defaultInstance.parse).toList
+      val pd = new File(args(0)).listFiles.map(KbpDocSerializer.deserializeFromFile)
       bs.extract(pd.head)
       cs.extract(pd.head)
       (bs, cs, pd)
