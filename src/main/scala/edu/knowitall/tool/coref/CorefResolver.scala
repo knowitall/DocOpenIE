@@ -22,7 +22,14 @@ class StanfordCorefResolver() extends CorefResolver {
   val coref = new CleanXmlStanfordResolver()
 
   override def resolve(doc: Document): Seq[MentionCluster] = {
-    val clusters = coref.clusters(doc.text)
+    val clusters = try {
+      coref.clusters(doc.text)
+    } catch {
+      case e: Exception => {
+        e.printStackTrace()
+        Nil
+      }
+    }
     clusters.iterator.toSeq.map { case (bestMention, allMentions) =>
       StanfordMentionCluster(bestMention, allMentions)
     }
