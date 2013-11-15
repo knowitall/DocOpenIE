@@ -21,13 +21,16 @@ libraryDependencies ++= Seq(
   "edu.washington.cs.knowitall.nlptools" %% "nlptools-parse-clear" % "2.4.4",
   "edu.washington.cs.knowitall.nlptools" %% "nlptools-coref-stanford" % "2.4.4",
   "edu.washington.cs.knowitall.taggers" %% "taggers-core" % "0.3",
-  "com.twitter" % "chill_2.10" % "0.3.5")
+  "com.twitter" % "chill_2.10" % "0.3.5",
+  "com.rockymadden.stringmetric" % "stringmetric-core" % "0.25.3")
 
 scalacOptions ++= Seq("-unchecked", "-deprecation")
 
 // custom options for high memory usage
 
 javaOptions += "-Xmx4G"
+
+// javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005")
 
 javaOptions ++= Seq("-XX:+UseConcMarkSweepGC", "-Xmx8G", "-Xss512m")
 
