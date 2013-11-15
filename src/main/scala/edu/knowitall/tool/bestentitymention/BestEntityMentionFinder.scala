@@ -17,6 +17,8 @@ import edu.stanford.nlp.ling.CoreLabel
 import edu.stanford.nlp.ling.CoreAnnotations.NamedEntityTagAnnotation
 import java.io.File
 import scala.util.matching.Regex
+import com.rockymadden.stringmetric.similarity.JaroWinklerMetric
+
 
 trait BestEntityMentionFinder {
 
@@ -178,25 +180,20 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
     if (originalString.forall(p => p.isUpper) || accronymRegex.findFirstIn(rawDoc).isDefined) {
 
       for (cs <- sortedCandidateStrings) {
-        val words = cs.name.split(" ").filter(p => { p(0).isUpper }).takeRight(originalString.length())
-        var goodCandidate = true
-        var index = 0
+        val words = cs.words.filter(p => { p(0).isUpper }).takeRight(originalString.length())
         if (words.length >= originalString.length()) {
-          for (word <- words) {
-            if (word(0) != originalString(index)) {
-              goodCandidate = false
-            }
-            index += 1
-          }
+          val goodCandidate = !words.zipWithIndex.exists { case (word, index) => word(0) != originalString(index) }
+
           if (goodCandidate) {
-            val candidateWords = cs.name.split(" ")
-            var index = 0
-            for (cw <- candidateWords) {
+            for ((cw, index) <- cs.words.zipWithIndex) {
               if (cw == words.head) {
                 // Expand "CDC" to "Centers for Disease Control" by checking acronym caps against head letters in candidate.
-                return BestEntityMention(originalString, begOffset, candidateWords.slice(index, candidateWords.length) mkString " ")
+                // Possible features:
+                // -- Proximity
+                // -- Number of possible matches
+                // -- Number of extraneous tokens (e.g. for 'CDC' -> 'U.S. Centers for Disease Control' has 3 extraneous tokens)
+                return BestEntityMention(originalString, begOffset, cs.words.slice(index, cs.words.length) mkString " ")
               }
-              index += 1
             }
           }
         }
@@ -236,21 +233,28 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
     if (probablyOrganization) {
       //do this if original String is not refferring to a location
       for (cs <- candidateStrings) {
-        val words = cs.name.split(" ")
         val originalWords = originalString.split(" ")
-        if ((words.length > originalWords.length) &&
-          ((words.takeRight(originalWords.length).mkString(" ") == originalString) ||
-            (words.take(originalWords.length).mkString(" ") == originalString))) {
+        if ((cs.words.length > originalWords.length) &&
+          ((cs.words.takeRight(originalWords.length).mkString(" ") == originalString) ||
+            (cs.words.take(originalWords.length).mkString(" ") == originalString))) {
           // Catch cases where a candidate is a word-prefix or suffix (e.g. Centers for Disease Control => U.S. Centers for Disease Control)
-          return BestEntityMention(originalString, begOffset, words mkString " ")
+          // Features:
+          // proximity
+          // number of possible matches (if let the whole loop run)
+          // left match
+          // right match
+          return BestEntityMention(originalString, begOffset, cs.name)
         }
       }
     }
 
-    //finally check if the original string if prefix of an organization
+    // finally check if the original string if prefix of an organization
     for (cs <- sortedCandidateStrings) {
-      if (cs.name.toLowerCase().startsWith(originalString.toLowerCase()) && cs.name.length() > originalString.length() && cs.name.split(" ").length == 1) {
+      if (cs.name.toLowerCase().startsWith(originalString.toLowerCase()) && cs.name.length() > originalString.length() && cs.words.length == 1) {
         // check if original string is a character-prefix of a one-word candidate.
+        // Feaures:
+        // proximity
+        // length disparity (weak)
         return BestEntityMention(originalString, begOffset, cs.name)
       }
     }
@@ -323,17 +327,16 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
     val sortedCandidateStrings = sortCandidateStringsByProximity(candidateStrings, begOffset)
     var candidates = List[String]()
     val originalWords = originalString.split(" ")
-    for (cs <- sortedCandidateStrings) {
-      val size = cs.name.split(" ").length
-      var index = 0
+    for ((cs, index) <- sortedCandidateStrings.zipWithIndex) {
+      val size = cs.words.length
       while (index < (size - 1)) {
-        val words = cs.name.split(" ").drop(index)
+        val words = cs.words.drop(index)
         if ((words.length > (originalWords.length + 1)) &&
           (words.take(originalWords.length).mkString(" ").toLowerCase() == originalString.toLowerCase()) &&
           (words(originalWords.length) == "," || words(originalWords.length) == "in")) {
+          // find things that look like abbreviations
           candidates = candidates :+ words.take(originalWords.length).mkString(" ") + ", " + words.drop(originalWords.length + 1).mkString(" ")
         }
-        index += 1
       }
     }
     candidates = candidates.filter(p => (p.split(" ").length < 7))
@@ -373,6 +376,12 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
         }
         val headTuple = candidates.toMap.toList.sortBy(f => f._2).headOption
         if (headTuple.isDefined) {
+          // regex found something that looks better
+          // Features:
+          // proximity
+          // size of "candidates" in this scope
+          // containment relationship features
+          // was abbreviation expanded
           BestEntityMention(originalName, begOffset, containedPlace + ", " + headTuple.get._1)
         } else {
           BestEntityMention(originalString, begOffset, originalString)
@@ -397,16 +406,33 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
 
     val originalString = originalName
     for (cs <- sortCandidateStringsByProximity(candidateStrings, begOffset)) {
-      val words = cs.name.split(" ")
+      val words = cs.words
       val originalWords = originalString.split(" ")
       if ((words.length > originalWords.length) &&
         ((words.takeRight(originalWords.length).mkString(" ") == originalString) ||
           (words.take(originalWords.length).mkString(" ") == originalString)) &&
           (words.length < 4)) {
-        return BestEntityMention(originalName, begOffset, words.mkString(" "))
+        // if 'Peterson' -> 'Scott Peterson' or 'Scott' -> 'Scott Peterson', return
+        // the first case like this that we find.
+        // TODO: collect all hits and decide what to do from there (e.g. bail if conflicts, or maybe return them all and let ranker sort them out?)
+        // Possible features:
+        // -- Proximity
+        // -- Suffix match (e.g. 'Peterson' -> 'Scott Peterson')
+        // -- Prefix match (e.g. 'Scott' -> 'Scott Peterson')
+        // -- words.length - originalWords.length (would this be useful?)
+        // -- number of candidates that make it through this filter at any proximity
+        return BestEntityMention(originalName, begOffset, cs.name)
       }
     }
 
+    // Instead of using candidateStrings (stanford NER),
+    // use a regex to search for noncap Cap Cap noncap strings
+    // that contain originalString.
+    // take the closest one if there is one. (how close?)
+    // Possible features:
+    // -- Proximity
+    // -- Similarity
+    // This rule actually doesn't find anything except identity strings.
     if (probablyPerson) {
       //try a conservative name regex if nothing from Stanford NER was found
       val nameRegex = """(\.|(\s[a-z]+\s))([A-Z]\w+\s[A-Z]\w+)(\.|(\s[a-z]+\s))""".r
@@ -414,7 +440,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
       val nameList = for (
         nameMatch <- nameRegex.findAllMatchIn(rawDoc).toList;
         name = nameMatch.group(3);
-        if name.contains(originalString)
+        if (JaroWinklerMetric.compare(name, originalString).getOrElse(0.0) > 0.8)
       ) yield Entity(name, nameMatch.start(3), "PERSON")
       if (nameList.headOption.isDefined) {
         val sortedNameList = sortCandidateStringsByProximity(nameList, begOffset)
@@ -646,4 +672,8 @@ case class NamedEntityCollection(
   val locations: List[Entity],
   val people: List[Entity])
 
-case class Entity(val name: String, val offset: Int, val entityType: String)
+case class Entity(val name: String, val offset: Int, val entityType: String) {
+
+  lazy val words = name.split(" ")
+
+}
