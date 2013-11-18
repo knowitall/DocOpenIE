@@ -28,9 +28,7 @@ scalacOptions ++= Seq("-unchecked", "-deprecation")
 
 // custom options for high memory usage
 
-javaOptions += "-Xmx4G"
-
-// javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005")
+//javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005")
 
 javaOptions ++= Seq("-XX:+UseConcMarkSweepGC", "-Xmx8G", "-Xss512m")
 

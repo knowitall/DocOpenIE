@@ -300,8 +300,9 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
     val sortedCandidateStrings = sortCandidateStringsByProximity(candidateStrings, begOffset)
     var candidates = List[String]()
     val originalWords = originalString.split(" ")
-    for ((cs, index) <- sortedCandidateStrings.zipWithIndex) {
+    for (cs <- sortedCandidateStrings) {
       val size = cs.nameWords.length
+      var index = 0
       while (index < (size - 1)) {
         val words = cs.nameWords.drop(index)
         if ((words.length > (originalWords.length + 1)) &&
@@ -310,6 +311,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
           // find things that look like abbreviations
           candidates = candidates :+ words.take(originalWords.length).mkString(" ") + ", " + words.drop(originalWords.length + 1).mkString(" ")
         }
+        index += 1
       }
     }
     candidates = candidates.filter(p => (p.split(" ").length < 7))
