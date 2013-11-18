@@ -5,19 +5,11 @@ import edu.knowitall.repr.document.Document
 import edu.knowitall.tool.coref.Mention
 import edu.knowitall.tool.coref.Substitution
 
-trait Entity extends Tag {
-  def name: String
-  def entityType: String
+case class Entity(val text: String, val offset: Int, val name: String, val entityType: String) extends Tag {
+  lazy val cleanText = text.replaceAll("\\s+", " ")
   lazy val nameWords = name.split(" ")
   lazy val textWords = text.split(" ")
 }
-
-object Entity {
-  case class EntityImpl(val text: String, val offset: Int, val name: String, val entityType: String) extends Entity
-  def apply(text: String, offset: Int, name: String, entityType: String) = {
-    EntityImpl(text, offset, name, entityType)
-  }
-} 
 
 trait BestEntityMention extends Tag {
   def bestEntityMention: String

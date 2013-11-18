@@ -1,6 +1,8 @@
 package edu.knowitall.tool.bestentitymention
 
 import edu.knowitall.repr.bestentitymention.BestEntityMentionResolvedDocument
+import edu.knowitall.repr.bestentitymention.ContainmentBestEntityMention
+import edu.knowitall.repr.bestentitymention.ResolvedBestEntityMention
 import edu.knowitall.repr.bestentitymention.BestEntityMention
 import edu.knowitall.repr.bestentitymention.Entity
 import edu.knowitall.repr.document.Document
@@ -24,9 +26,7 @@ import com.rockymadden.stringmetric.similarity.JaroWinklerMetric
 trait BestEntityMentionFinder {
 
   def findBestEntity(
-      entityName: String, 
-      entityType: String, 
-      begOffset: Int, 
+      entity: Entity, 
       docText: String, 
       namedEntityCollection: NamedEntityCollection): Option[BestEntityMention]
 }
@@ -95,7 +95,7 @@ trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument {
   // find the bestEntityMentions in the Document
   lazy val bestEntityMentions = {
     documentEntities.flatMap(entity => {
-      bestEntityMentionFinder.findBestEntity(entity.text.replaceAll("\\s+", " "), entity.entityType, entity.offset, this.text, this.namedEntityCollection)
+      bestEntityMentionFinder.findBestEntity(entity, this.text, this.namedEntityCollection)
     })
   }
 }
@@ -103,19 +103,19 @@ trait BestEntityMentionsFound extends BestEntityMentionResolvedDocument {
 class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
   println("Instantiating new BestEntityMentionFinderOriginalAlgorithm object")
   //where the custom rules should go
-  override def findBestEntity(entityName: String, entityType: String, begOffset: Int, docText: String, namedEntityCollection: NamedEntityCollection): Option[BestEntityMention] = {
-    val bestMention = entityType match {
-      case "ORGANIZATION" => { findBestOrganizationString(entityName, namedEntityCollection.organizations, docText, begOffset, namedEntityCollection) }
+  override def findBestEntity(entity: Entity, docText: String, namedEntityCollection: NamedEntityCollection): Option[BestEntityMention] = {
+    val bestMention = entity.entityType match {
+      case "ORGANIZATION" => { findBestOrganizationString(entity, namedEntityCollection.organizations, docText, namedEntityCollection) }
       case "LOCATION" => {
-        findBestLocationString(entityName, namedEntityCollection.locations, docText, begOffset)
+        findBestLocationString(entity, namedEntityCollection.locations, docText)
       }
-      case "PERSON" => { findBestPersonString(entityName, namedEntityCollection.people, docText, begOffset, true) }
+      case "PERSON" => { findBestPersonString(entity, namedEntityCollection.people, docText, true) }
       case _ => {
-        val tryOrg = findBestOrganizationString(entityName, namedEntityCollection.organizations, docText, begOffset, namedEntityCollection)
-        if (tryOrg.bestEntityMention == entityName) {
-          val tryLoc = findBestLocationString(entityName, namedEntityCollection.locations, docText, begOffset)
-          if (tryLoc.bestEntityMention == entityName) {
-            findBestPersonString(entityName, namedEntityCollection.people, docText, begOffset, false)
+        val tryOrg = findBestOrganizationString(entity, namedEntityCollection.organizations, docText, namedEntityCollection)
+        if (tryOrg.bestEntityMention == entity.cleanText) {
+          val tryLoc = findBestLocationString(entity, namedEntityCollection.locations, docText)
+          if (tryLoc.bestEntityMention == entity.cleanText) {
+            findBestPersonString(entity, namedEntityCollection.people, docText, false)
           } else {
             tryLoc
           }
@@ -125,7 +125,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
       }
     }
 
-    if (bestMention.bestEntityMention != entityName) {
+    if (bestMention.bestEntityMention != entity.cleanText) {
       Some(bestMention)
     } else {
       None
@@ -138,14 +138,13 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
   }
 
   private def findBestOrganizationString(
-    originalName: String,
+    entity: Entity,
     candidateStrings: List[Entity],
     rawDoc: String,
-    begOffset: Integer,
     namedEntities: NamedEntityCollection): BestEntityMention = {
 
-    val originalString = originalName
-    val sortedCandidateStrings = sortCandidateStringsByProximity(candidateStrings, begOffset)
+    val originalString = entity.cleanText
+    val sortedCandidateStrings = sortCandidateStringsByProximity(candidateStrings, entity.offset)
 
     val accronymRegex = new Regex("\\([^\\)\\(]{0,15}" + originalString + "[^\\)\\(]{0,15}\\)")
 
@@ -165,7 +164,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
                 // -- Proximity
                 // -- Number of possible matches
                 // -- Number of extraneous tokens (e.g. for 'CDC' -> 'U.S. Centers for Disease Control' has 3 extraneous tokens)
-                return BestEntityMention(originalString, begOffset, cs.nameWords.drop(index).mkString(" "))
+                return ResolvedBestEntityMention(originalString, entity.offset, cs.copy(name = cs.nameWords.drop(index).mkString(" ")))
               }
             }
           }
@@ -216,7 +215,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
           // number of possible matches (if let the whole loop run)
           // left match
           // right match
-          return BestEntityMention(originalString, begOffset, cs.name)
+          return ResolvedBestEntityMention(originalString, entity.offset, cs)
         }
       }
     }
@@ -228,11 +227,11 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
         // Feaures:
         // proximity
         // length disparity (weak)
-        return BestEntityMention(originalString, begOffset, cs.name)
+        return ResolvedBestEntityMention(originalString, entity.offset, cs)
       }
     }
 
-    BestEntityMention(originalString, begOffset, originalString)
+    BestEntityMention(originalString, entity.offset, originalString)
   }
 
   private def locationCasing(str: String): String = {
@@ -295,9 +294,9 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
       str
     }
   }
-  private def findBestLocationString(originalName: String, candidateStrings: List[Entity], rawDoc: String, begOffset: Integer): BestEntityMention = {
-    val originalString = originalName
-    val sortedCandidateStrings = sortCandidateStringsByProximity(candidateStrings, begOffset)
+  private def findBestLocationString(entity: Entity, candidateStrings: List[Entity], rawDoc: String): BestEntityMention = {
+    val originalString = entity.cleanText
+    val sortedCandidateStrings = sortCandidateStringsByProximity(candidateStrings, entity.offset)
     var candidates = List[String]()
     val originalWords = originalString.split(" ")
     for (cs <- sortedCandidateStrings) {
@@ -337,50 +336,56 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
         val origQuote = originalString.replaceAll("\\(|\\)", "")
         val locationRegex = new Regex("(" + origQuote + "|" + origQuote.toLowerCase() + "|" + origQuote.toUpperCase() + "),\\s?([A-Z][\\S]+)[\\s\\.\\?!,]")
         val sourceText = rawDoc
-        val candidates = scala.collection.mutable.Map[String, Int]()
+        val candidates = scala.collection.mutable.Map[Entity, Int]()
+        val containedMap = scala.collection.mutable.Map[Entity, Entity]()
         for (
-          locationRegex(containedLoc, containerLoc) <- locationRegex.findAllMatchIn(sourceText); fullLocation = expandAbbreviation(locationCasing(containedLoc + ", " + containerLoc)).split(",");
+          mach <- locationRegex.findAllMatchIn(sourceText);
+          locationRegex(containedLoc, containerLoc) = mach;
+          containedEntity = Entity(containedLoc, mach.start(0), containedLoc, "LOCATION");
+          fullLocation = expandAbbreviation(locationCasing(containedLoc + ", " + containerLoc)).split(",");
           if locationContainsLocation(fullLocation(1).trim(), fullLocation(0).trim())
         ) {
-          val containerLocation = fullLocation(1).trim()
-          if (candidates.contains(containerLocation)) {
-            candidates += ((containerLocation, 1 + candidates.get(containerLocation).get))
+          val containerEntity = Entity(containerLoc, mach.start(1), fullLocation(1).trim(), "LOCATION")
+          if (candidates.contains(containerEntity)) {
+            candidates += ((containerEntity, 1 + candidates(containerEntity)))
           } else {
-            candidates += ((containerLocation, 1))
+            candidates += ((containerEntity, 1))
+            containedMap += ((containerEntity, containedEntity))
           }
         }
         val headTuple = candidates.toMap.toList.sortBy(f => f._2).headOption
-        if (headTuple.isDefined) {
-          // regex found something that looks better
-          // Features:
-          // proximity
-          // size of "candidates" in this scope
-          // containment relationship features
-          // was abbreviation expanded
-          BestEntityMention(originalName, begOffset, containedPlace + ", " + headTuple.get._1)
-        } else {
-          BestEntityMention(originalString, begOffset, originalString)
+        headTuple match {
+          case Some((containerEntity, count)) => {
+            // regex found something that looks better
+            // Features:
+            // proximity
+            // size of "candidates" in this scope
+            // containment relationship features
+            // was abbreviation expanded
+            ContainmentBestEntityMention(originalString, entity.offset, containedMap(containerEntity), containerEntity)
+          }
+          case None =>
+            BestEntityMention(originalString, entity.offset, originalString)
         }
       } else {
         //sort by distance to original string
         val containerStrings = containerMap.keys
-        val sortedContainerStrings = sortCandidateStringsByProximity(containerStrings.toList, begOffset)
-        BestEntityMention(originalName, begOffset, locationCasing(originalString + ", " + sortedContainerStrings.head.name))
+        val sortedContainerStrings = sortCandidateStringsByProximity(containerStrings.toList, entity.offset)
+        BestEntityMention(originalString, entity.offset, locationCasing(originalString + ", " + sortedContainerStrings.head.name))
       }
     } else {
       val candidate = candidates.head
-      BestEntityMention(originalName, begOffset, expandAbbreviation(locationCasing(candidate)))
+      BestEntityMention(originalString, entity.offset, expandAbbreviation(locationCasing(candidate)))
     }
   }
   private def findBestPersonString(
-    originalName: String,
+    entity: Entity,
     candidateStrings: List[Entity],
     docText: String,
-    begOffset: Integer,
     probablyPerson: Boolean): BestEntityMention = {
 
-    val originalString = originalName
-    for (cs <- sortCandidateStringsByProximity(candidateStrings, begOffset)) {
+    val originalString = entity.cleanText
+    for (cs <- sortCandidateStringsByProximity(candidateStrings, entity.offset)) {
       val words = cs.nameWords
       val originalWords = originalString.split(" ")
       if ((words.length > originalWords.length) &&
@@ -396,7 +401,7 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
         // -- Prefix match (e.g. 'Scott' -> 'Scott Peterson')
         // -- words.length - originalWords.length (would this be useful?)
         // -- number of candidates that make it through this filter at any proximity
-        return BestEntityMention(originalName, begOffset, cs.name)
+        return BestEntityMention(originalString, entity.offset, cs.name)
       }
     }
 
@@ -418,12 +423,12 @@ class BestEntityMentionFinderOriginalAlgorithm extends BestEntityMentionFinder {
         if (JaroWinklerMetric.compare(name, originalString).getOrElse(0.0) > 0.8)
       ) yield Entity(name, nameMatch.start(3), name, "PERSON")
       if (nameList.headOption.isDefined) {
-        val sortedNameList = sortCandidateStringsByProximity(nameList, begOffset)
-        return BestEntityMention(originalName, begOffset, sortedNameList.head.name)
+        val sortedNameList = sortCandidateStringsByProximity(nameList, entity.offset)
+        return BestEntityMention(originalString, entity.offset, sortedNameList.head.name)
       }
     }
 
-    BestEntityMention(originalName, begOffset, originalName)
+    BestEntityMention(originalString, entity.offset, originalString)
   }
 
   private def isValidLocation(locationStr: String): Boolean = {
