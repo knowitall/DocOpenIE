@@ -26,7 +26,7 @@ trait BestEntityMention extends Tag {
 }
 
 object BestEntityMention{
-  case class BestEntityMentionImpl(text: String, offset: Int, bestEntityMention:String ) extends BestEntityMention
+  case class BestEntityMentionImpl(text: String, offset: Int, bestEntityMention:String) extends BestEntityMention
   def apply (text: String, offset: Int, bestEntityMention:String) = {
 	  BestEntityMentionImpl(text,offset,bestEntityMention)
   }
