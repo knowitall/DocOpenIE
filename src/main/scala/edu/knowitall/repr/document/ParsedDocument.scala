@@ -52,6 +52,15 @@ case class ParsedSentence(
   override def tokens = tokenStrings.map(ChunkedToken.stringFormat.read)
 }
 
+object ParsedSentence {
+  
+  import DocumentParser.tokenStrings
+  
+  def convert(s: Sentence with OpenIEExtracted) = {
+    ParsedSentence(s.text, s.lemmatizedTokens.toList, DependencyGraph.stringFormat.write(s.dgraph), tokenStrings(s.tokens))
+  }
+}
+
 case class SentencedDocument(
   override val text: String,
   override val sentences: Stream[DocumentSentence[Sentence]],
@@ -60,6 +69,8 @@ case class SentencedDocument(
 
 case class DocumentParser(val parser: DependencyParser, chunker: Chunker, stemmer: Stemmer, resolver: CorefResolver, nerTagger: StanfordNERAnnotator) {
 
+  import DocumentParser.tokenStrings
+  
   def parse(d: SentencedDocument): ParsedDocument = {
 
     def parseSentence(s: Sentence): Sentence with OpenIEExtracted = {
@@ -68,8 +79,8 @@ case class DocumentParser(val parser: DependencyParser, chunker: Chunker, stemme
       val chunkTokens = chunker.chunkPostagged(postokens)
       val lemmatizedTokens = (chunkTokens map stemmer.stemToken).toList
       val dgraphString = DependencyGraph.stringFormat.write(parse)
-      val tokenStrings = chunkTokens.toList.map(ChunkedToken.stringFormat.write)
-      ParsedSentence(s.text, lemmatizedTokens, dgraphString, tokenStrings)
+      val ts = tokenStrings(chunkTokens).toList
+      ParsedSentence(s.text, lemmatizedTokens, dgraphString, ts)
     }
 
     val parsedSentences = d.sentences.map { case DocumentSentence(sentence, offset) =>
@@ -92,6 +103,8 @@ object DocumentParser {
   private lazy val defaultNERTagger = new StanfordNERAnnotator()
 
   lazy val defaultInstance: DocumentParser = DocumentParser(defaultParser, defaultChunker, defaultStemmer, defaultResolver, defaultNERTagger)
+  
+  def tokenStrings(chunkTokens: Seq[ChunkedToken]) = chunkTokens.toList.map(ChunkedToken.stringFormat.write)
 }
 
 object KbpDocumentSentencer {

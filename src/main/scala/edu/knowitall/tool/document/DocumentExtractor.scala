@@ -139,7 +139,7 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
     for(m <- cluster.mentions; if m.isPronoun) yield BestEntityMention(m.text,m.offset,bestName)
   }
 
-  def extract(d: InputDoc): OutputDoc = {
+  def extract(d: InputDoc): Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordNERAnnotated with BestEntityMentionResolvedDocument with DocId = {
 
     val doc  = new Document(d.text) with OpenIELinker with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordNERAnnotated with BestEntityMentionsFound {
       type M = Mention

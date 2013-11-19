@@ -3,6 +3,7 @@ package edu.knowitall.main
 import edu.knowitall.repr.document.KbpDocumentSentencer
 import edu.knowitall.repr.document.DocumentParser
 import edu.knowitall.repr.document.Document
+import edu.knowitall.repr.document.ExtractedDocument
 import edu.knowitall.repr.document.Sentenced
 import edu.knowitall.repr.document.DocId
 import edu.knowitall.repr.sentence.Sentence
@@ -64,7 +65,7 @@ object FullDocSerializer {
 
     val docExtractor = new OpenIECorefExpandedDocumentExtractor()
     
-    val extractedDocuments = parsedDocuments.map(docExtractor.extract)
+    val extractedDocuments = parsedDocuments.map(docExtractor.extract).map(ExtractedDocument.convert)
     
     for (ed <- extractedDocuments) {
       val outFile = new File(outputDir, ed.docId + ".bin")
@@ -74,9 +75,9 @@ object FullDocSerializer {
     }
   }
 
-  def deserializeFromFile(file: File): Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound with StanfordSerializableNERAnnotated with DocId = {
+  def deserializeFromFile(file: File): Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionResolvedDocument with StanfordSerializableNERAnnotated with DocId = {
     using(new ObjectInputStream(new FileInputStream(file))) { ois =>
-      val meatLocker = ois.readObject().asInstanceOf[MeatLocker[Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound with StanfordSerializableNERAnnotated with BestEntityMentionResolvedDocument with DocId]]
+      val meatLocker = ois.readObject().asInstanceOf[MeatLocker[Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionResolvedDocument with StanfordSerializableNERAnnotated with BestEntityMentionResolvedDocument with DocId]]
       meatLocker.get
     }
   }

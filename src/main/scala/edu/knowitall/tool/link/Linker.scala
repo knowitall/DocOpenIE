@@ -28,20 +28,21 @@ trait OpenIELinked extends LinkedDocument {
 
   override type L = FreeBaseLink
 
-  import OpenIELinked.Context
+  import OpenIELinked.ArgContext
 
   def links: Seq[L]
   /**
    * (arg to be linked, "cleaned" version of it's string, Seq[Context Sentence])
    */
-  def argContexts: Seq[(ExtractionPart, String, Context)]
-
+  def argContexts: Seq[ArgContext]
 
 }
 
 
 object OpenIELinked {
-  case class Context(
+  case class ArgContext(
+    arg: ExtractionPart,
+    cleanArg: String,
     source: DocumentSentence[Sentence with OpenIEExtracted],
     extended: Seq[DocumentSentence[Sentence with OpenIEExtracted]],
     clusters: Seq[MentionCluster]) {
@@ -56,7 +57,7 @@ trait OpenIELinker extends OpenIELinked {
 
   override type L = FreeBaseLink
 
-  import OpenIELinked.Context
+  import OpenIELinked.ArgContext
 
   // Hardcoded threshold for linker score.
   val minCombinedScore = 0.0
@@ -121,7 +122,7 @@ trait OpenIELinker extends OpenIELinked {
   /**
    * Pairs of (argument, context)
    */
-  lazy val argContexts: Seq[(ExtractionPart, String, Context)] = this.sentences.flatMap { s =>
+  lazy val argContexts: Seq[ArgContext] = this.sentences.flatMap { s =>
     // Get arguments to send to the linker
     val args = s.sentence.extractions.flatMap(e => e.arg1 :: e.arg2 :: Nil).distinct
     val cleanArgs = args map cleanArg(s)
@@ -145,20 +146,17 @@ trait OpenIELinker extends OpenIELinked {
       } else {
         (Nil, Nil)
       }
-
-      val context = Context(s, extended, clusters)
-
-      (arg, cleaned, context)
+      ArgContext(arg, cleaned, s, extended, clusters)
     }
   }
 
   def linker: EntityLinker
 
-  lazy val links: Seq[FreeBaseLink] = argContexts.flatMap { case (arg, cleaned, context) =>
-    val elink = linker.getBestEntity(cleaned, context.fullText).filter(_.combinedScore >= minCombinedScore)
+  lazy val links: Seq[FreeBaseLink] = argContexts.flatMap { ac =>
+    val elink = linker.getBestEntity(ac.cleanArg, ac.fullText).filter(_.combinedScore >= minCombinedScore)
     val linkedMention = elink.map { l =>
-      val offset = context.source.sentence.tokens(arg.tokenIndices.head).offset + context.source.offset
-      FreeBaseLink(arg.text, offset, l.entity.name, l.combinedScore, l.docSimScore, l.candidateScore, l.inlinks, l.entity.fbid, l.entity.retrieveTypes().asScala.toSeq)
+      val offset = ac.source.sentence.tokens(ac.arg.tokenIndices.head).offset + ac.source.offset
+      FreeBaseLink(ac.arg.text, offset, l.entity.name, l.combinedScore, l.docSimScore, l.candidateScore, l.inlinks, l.entity.fbid, l.entity.retrieveTypes().asScala.toSeq)
     }
     linkedMention.toSeq
   }

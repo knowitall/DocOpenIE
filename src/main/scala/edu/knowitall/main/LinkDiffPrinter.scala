@@ -83,20 +83,20 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
 
   def linkString(name: String, link: FreeBaseLink, kbpDoc: LKBPDoc): String = {
 
-    val argContexts = kbpDoc.argContexts.toSeq.filter { case (arg, _, ctxt) =>
-      val chStartMatch = link.offset == arg.offset + ctxt.source.offset
-      val chEndMatch = link.offset + link.text.length == arg.offset + ctxt.source.offset + arg.text.length
-      val textMatch = link.text == arg.text
+    val argContexts = kbpDoc.argContexts.toSeq.filter { ac =>
+      val chStartMatch = link.offset == ac.arg.offset + ac.source.offset
+      val chEndMatch = link.offset + link.text.length == ac.arg.offset + ac.source.offset + ac.arg.text.length
+      val textMatch = link.text == ac.arg.text
       chStartMatch && chEndMatch && textMatch
     }
     require(argContexts.size == 1, s"${argContexts.size} links found, expected one.")
 
     val context = argContexts.headOption
 
-    val contextString = context.map(_._3.fullText.mkString("[", ", ", "]")).getOrElse("CONTEXT NOT FOUND")
+    val contextString = context.map(_.fullText.mkString("[", ", ", "]")).getOrElse("CONTEXT NOT FOUND")
 
-    val contextMentions = context.map { case (_, _, ctxt) =>
-      val clusters = ctxt.clusters
+    val contextMentions = context.map { ac =>
+      val clusters = ac.clusters
       val texts = clusters.map { c =>
         c.mentions.map { case m: Mention =>
           s"(${m.offset}) ${m.text}"
@@ -104,8 +104,8 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
       }
       texts.mkString("[", "] [", "]")
     }.getOrElse("[]")
-    val contextSize = context.map(_._3.size).getOrElse(0)
-    val cleanString = context.map(_._2).getOrElse("NA")
+    val contextSize = context.map(_.size).getOrElse(0)
+    val cleanString = context.map(_.cleanArg).getOrElse("NA")
     val fields = Seq(name) ++ linkFields(link, cleanString) ++ Seq(contextMentions, contextSize.toString, contextString, kbpDoc.docId)
     fields.map(EvaluationPrinter.clean).mkString("\t")
   }
