@@ -204,11 +204,12 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
     val newDoc = new Document(d.text) with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordNERAnnotated with BestEntityMentionResolvedDocument with DocId {
       type M = Mention
       type B = BestEntityMention
-      override val argContexts = doc.argContexts
-      val links = doc.links
-      val clusters = doc.clusters
-      val sentences = doc.sentences
-      val bestEntityMentions = corefExpandedBestEntityMentions.toSeq
+      override val argContexts = doc.argContexts.toList
+      val links = doc.links.toList
+      val clusters = doc.clusters.toList
+      val sentencesList = doc.sentences.toList
+      def sentences = sentencesList.toStream
+      val bestEntityMentions = corefExpandedBestEntityMentions.toList
       val docId = d.docId
       val NERAnnotatedDoc = d.NERAnnotatedDoc
     }
