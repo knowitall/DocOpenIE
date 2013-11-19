@@ -95,3 +95,17 @@ class KbpDocPrinter(out: java.io.PrintStream) {
     docSentence.sentence.tokens(part.tokenIndices.head).offset + docSentence.offset
   }
 }
+
+object KbpDocPrinter extends App {
+  
+  import java.io.File
+  
+  val extractedDocuments = new File(args(0)).listFiles.map(FullDocSerializer.deserializeFromFile)
+  
+  val docPrinter = new KbpDocPrinter(System.out)
+     
+  extractedDocuments foreach docPrinter.print
+  
+}
+
+
