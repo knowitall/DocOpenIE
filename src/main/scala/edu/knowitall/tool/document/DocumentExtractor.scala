@@ -139,7 +139,7 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
     for(m <- cluster.mentions; if m.isPronoun) yield BestEntityMention(m.text,m.offset,bestName)
   }
 
-  def extract(d: InputDoc): Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordNERAnnotated with BestEntityMentionResolvedDocument with DocId = {
+  def extract(d: InputDoc): OutputDoc = {
 
     val doc  = new Document(d.text) with OpenIELinker with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordNERAnnotated with BestEntityMentionsFound {
       type M = Mention
@@ -202,17 +202,16 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
 	      }
 	    }
     }
-    val newDoc = new Document(d.text) with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordSerializableNERAnnotated with BestEntityMentionResolvedDocument with DocId {
+    val newDoc = new Document(d.text) with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordNERAnnotated with BestEntityMentionResolvedDocument with DocId {
       type M = Mention
       type B = BestEntityMention
-      override val argContexts = doc.argContexts.toList
-      val links = doc.links.toList
-      val clusters = doc.clusters.toList
-      val sentencesList = doc.sentences.toList
-      def sentences = sentencesList.toStream
-      val bestEntityMentions = corefExpandedBestEntityMentions.toList
+      override val argContexts = doc.argContexts
+      val links = doc.links
+      val clusters = doc.clusters
+      val sentences = doc.sentences
+      val bestEntityMentions = corefExpandedBestEntityMentions
       val docId = d.docId
-      val annotationBytes = StanfordSerializableNERAnnotated.annotationBytes(d.NERAnnotatedDoc)
+      val NERAnnotatedDoc = d.NERAnnotatedDoc
     }
     newDoc
   }
