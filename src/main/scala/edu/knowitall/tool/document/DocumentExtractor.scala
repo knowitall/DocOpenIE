@@ -8,6 +8,7 @@ import edu.knowitall.repr.document.Sentenced
 import edu.knowitall.repr.document.DocumentSentence
 import edu.knowitall.repr.extraction.Extraction
 import edu.knowitall.repr.ner.StanfordNERAnnotated
+import edu.knowitall.repr.ner.StanfordSerializableNERAnnotated
 import edu.knowitall.repr.sentence.Parsed
 import edu.knowitall.repr.sentence.Chunked
 import edu.knowitall.repr.coref.CorefResolved
@@ -201,7 +202,7 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
 	      }
 	    }
     }
-    val newDoc = new Document(d.text) with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordNERAnnotated with BestEntityMentionResolvedDocument with DocId {
+    val newDoc = new Document(d.text) with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordSerializableNERAnnotated with BestEntityMentionResolvedDocument with DocId {
       type M = Mention
       type B = BestEntityMention
       override val argContexts = doc.argContexts.toList
@@ -211,7 +212,7 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
       def sentences = sentencesList.toStream
       val bestEntityMentions = corefExpandedBestEntityMentions.toList
       val docId = d.docId
-      val NERAnnotatedDoc = d.NERAnnotatedDoc
+      val annotationBytes = StanfordSerializableNERAnnotated.annotationBytes(d.NERAnnotatedDoc)
     }
     newDoc
   }
