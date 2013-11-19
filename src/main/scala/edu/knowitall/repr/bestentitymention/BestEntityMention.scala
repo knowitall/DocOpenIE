@@ -38,7 +38,6 @@ trait BestEntityMentionResolvedDocument {
 
   def bestEntityMentions: Seq[B];
 
-
   /**
    * Get links contained between the character interval
    * defined by chStart (inclusive) and chEnd (exclusive)
