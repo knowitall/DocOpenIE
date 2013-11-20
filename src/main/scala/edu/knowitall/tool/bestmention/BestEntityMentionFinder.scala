@@ -52,8 +52,8 @@ trait BestMentionsFound extends BestMentionResolvedDocument {
       val relevantTokens = {
         for (
           (tok, index) <- tokens.zipWithIndex;
-          net = tok.get(classOf[NamedEntityTagAnnotation]);
-          if (net == "ORGANIZATION" || net == "LOCATION" || net == "PERSON")
+          net = EntityType.from(tok.get(classOf[NamedEntityTagAnnotation]))
+          if (net == Organization || net == Location || net == Person)
         ) yield {
           tok.setIndex(index)
           tok
