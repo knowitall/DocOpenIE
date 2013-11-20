@@ -8,7 +8,7 @@ import edu.knowitall.repr.sentence.Parsed
 import edu.knowitall.repr.sentence.Lemmatized
 import edu.knowitall.repr.ner.StanfordSerializableNERAnnotated
 import edu.knowitall.repr.ner.StanfordNERAnnotated
-import edu.knowitall.repr.bestentitymention.BestEntityMention
+import edu.knowitall.repr.bestmention.BestMention
 import edu.knowitall.tool.ner.StanfordNERAnnotator
 import edu.knowitall.tool.parse.DependencyParser
 import edu.knowitall.tool.parse.graph.DependencyGraph
@@ -26,7 +26,7 @@ import edu.knowitall.tool.sentence.OpenIEExtractor
 import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.tool.link.OpenIELinked.ArgContext
 import edu.knowitall.repr.link.FreeBaseLink
-import edu.knowitall.repr.bestentitymention.BestEntityMentionResolvedDocument
+import edu.knowitall.repr.bestmention.BestMentionResolvedDocument
 import edu.stanford.nlp.pipeline.Annotation
 
 case class ExtractedDocument(
@@ -36,23 +36,23 @@ case class ExtractedDocument(
   override val annotationBytes: Array[Byte],
   override val links: List[FreeBaseLink],
   override val argContexts: List[ArgContext],
-  override val bestEntityMentions: List[BestEntityMention],
+  override val bestMentions: List[BestMention],
   val docId: String)
 extends Document(text)
   with OpenIELinked 
   with CorefResolved 
   with Sentenced[Sentence with OpenIEExtracted] 
   with StanfordSerializableNERAnnotated 
-  with BestEntityMentionResolvedDocument 
+  with BestMentionResolvedDocument 
   with DocId {
   
-  override type B = BestEntityMention
+  override type B = BestMention
   
   override def sentences = sentencesList.toStream
 }
 
 object ExtractedDocument {
-  def convert(d: Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordNERAnnotated with BestEntityMentionResolvedDocument with DocId): ExtractedDocument = {
+  def convert(d: Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordNERAnnotated with BestMentionResolvedDocument with DocId): ExtractedDocument = {
     ExtractedDocument(
       d.text,
       d.sentences.map(ds => ds.copy(sentence = ParsedSentence.convert(ds.sentence).asInstanceOf[Sentence with OpenIEExtracted])).toList,
@@ -60,7 +60,7 @@ object ExtractedDocument {
       StanfordSerializableNERAnnotated.annotationBytes(d.NERAnnotatedDoc),
       d.links.toList,
       d.argContexts.toList,
-      d.bestEntityMentions.toList,
+      d.bestMentions.toList,
       d.docId)
   }
 }

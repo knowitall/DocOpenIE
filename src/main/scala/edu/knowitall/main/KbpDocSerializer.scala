@@ -13,8 +13,8 @@ import edu.knowitall.repr.sentence.Chunked
 import edu.knowitall.repr.sentence.Lemmatized
 import edu.knowitall.repr.coref.CorefResolved
 import edu.knowitall.repr.ner.StanfordSerializableNERAnnotated
-import edu.knowitall.repr.bestentitymention.BestEntityMentionResolvedDocument
-import edu.knowitall.tool.bestentitymention.BestEntityMentionsFound
+import edu.knowitall.repr.bestmention.BestMentionResolvedDocument
+import edu.knowitall.tool.bestmention.BestMentionsFound
 import edu.knowitall.tool.document.OpenIECorefExpandedDocumentExtractor
 import edu.knowitall.tool.link.OpenIELinked
 import java.io.File
@@ -75,9 +75,9 @@ object FullDocSerializer {
     }
   }
 
-  def deserializeFromFile(file: File): Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionResolvedDocument with StanfordSerializableNERAnnotated with DocId = {
+  def deserializeFromFile(file: File): Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestMentionResolvedDocument with StanfordSerializableNERAnnotated with DocId = {
     using(new ObjectInputStream(new FileInputStream(file))) { ois =>
-      val meatLocker = ois.readObject().asInstanceOf[MeatLocker[Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionResolvedDocument with StanfordSerializableNERAnnotated with BestEntityMentionResolvedDocument with DocId]]
+      val meatLocker = ois.readObject().asInstanceOf[MeatLocker[Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestMentionResolvedDocument with StanfordSerializableNERAnnotated with BestMentionResolvedDocument with DocId]]
       meatLocker.get
     }
   }

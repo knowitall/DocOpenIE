@@ -16,10 +16,10 @@ import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.tool.coref.Mention
 import edu.knowitall.tool.coref.Substitution
 import edu.knowitall.tool.coref.CoreferenceResolver
-import edu.knowitall.tool.bestentitymention.BestEntityMentionsFound
-import edu.knowitall.repr.bestentitymention.BestEntityMention
+import edu.knowitall.tool.bestmention.BestMentionsFound
+import edu.knowitall.repr.bestmention.BestMention
 import edu.knowitall.collection.immutable.Interval
-import edu.knowitall.repr.bestentitymention.BestEntityMentionResolvedDocument
+import edu.knowitall.repr.bestmention.BestMentionResolvedDocument
 import edu.knowitall.repr.link.LinkedDocument
 
 object EvaluationPrinter {
@@ -38,9 +38,9 @@ class EvaluationPrinter(out: java.io.PrintStream) {
 
   type SENT = Sentence with OpenIEExtracted
   type ExtractedSentenced = Sentenced[SENT]
-  type CorefTraits = LinkedDocument with CorefResolved with ExtractedSentenced with BestEntityMentionResolvedDocument
+  type CorefTraits = LinkedDocument with CorefResolved with ExtractedSentenced with BestMentionResolvedDocument
   type BaselineTraits = OpenIELinked with ExtractedSentenced
-  type FullTraits = OpenIELinked with ExtractedSentenced with BestEntityMentionsFound
+  type FullTraits = OpenIELinked with ExtractedSentenced with BestMentionsFound
 
   type ExtractedKbpDoc = Document with ExtractedSentenced with OpenIELinked with DocId
 
@@ -86,7 +86,7 @@ class EvaluationPrinter(out: java.io.PrintStream) {
 
   def getBestDisplayMention(epart: ExtractionPart, d: Document with ExtractedSentenced, ds: DocumentSentence[SENT]) = {
     val links = getLinks(epart, d, ds)
-    val bestMentions = getBestEntityMentions(epart, d, ds)
+    val bestMentions = getbestMentions(epart, d, ds)
     val subs = (links.map(_.substitution) ++ bestMentions.map(_.substitution))
     val filtered = getNonOverlappingSubstitutions(subs)
     if (filtered.isEmpty) epart.text
@@ -112,9 +112,9 @@ class EvaluationPrinter(out: java.io.PrintStream) {
     } else Nil
   }
 
-  def getBestEntityMentions(epart: ExtractionPart, d: Document, ds: DocumentSentence[SENT]) = {
-    if (d.isInstanceOf[BestEntityMentionResolvedDocument]) {
-      d.asInstanceOf[BestEntityMentionResolvedDocument].bestEntityMentionsBetween(offset(epart, ds), offset(epart, ds) + epart.text.length)
+  def getbestMentions(epart: ExtractionPart, d: Document, ds: DocumentSentence[SENT]) = {
+    if (d.isInstanceOf[BestMentionResolvedDocument]) {
+      d.asInstanceOf[BestMentionResolvedDocument].bestMentionsBetween(offset(epart, ds), offset(epart, ds) + epart.text.length)
     } else Nil
   }
 
@@ -148,8 +148,8 @@ class EvaluationPrinter(out: java.io.PrintStream) {
           val compArg1LinksString = compArg1Links.map(_.debugString).mkString("[", ", ", "]")
           val compArg2LinksString = compArg2Links.map(_.debugString).mkString("[", ", ", "]")
 
-          val arg1BestMentions = getBestEntityMentions(compExtr.arg1, compDoc, compSent)
-          val arg2BestMentions = getBestEntityMentions(compExtr.arg2, compDoc, compSent)
+          val arg1BestMentions = getbestMentions(compExtr.arg1, compDoc, compSent)
+          val arg2BestMentions = getbestMentions(compExtr.arg2, compDoc, compSent)
           val arg1BestMentionsString = arg1BestMentions.map(_.debugString).mkString("[", ", ", "]")
           val arg2BestMentionsString = arg2BestMentions.map(_.debugString).mkString("[", ", ", "]")
 

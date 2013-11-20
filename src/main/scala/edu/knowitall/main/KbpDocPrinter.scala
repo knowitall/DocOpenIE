@@ -13,14 +13,14 @@ import edu.knowitall.repr.link.Link
 import edu.knowitall.tool.sentence.OpenIEExtracted
 import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.tool.coref.Mention
-import edu.knowitall.repr.bestentitymention.BestEntityMentionResolvedDocument
+import edu.knowitall.repr.bestmention.BestMentionResolvedDocument
 
 /**
  * Code for producing human readable sample output.
  */
 class KbpDocPrinter(out: java.io.PrintStream) {
 
-  def print(doc: Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionResolvedDocument with DocId): Unit = {
+  def print(doc: Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestMentionResolvedDocument with DocId): Unit = {
 
     out.println(doc.docId)
     out.println("Number of sentences: " + doc.sentences.size)
@@ -40,9 +40,9 @@ class KbpDocPrinter(out: java.io.PrintStream) {
     printEntityMentions(doc)
   }
 
-  def printEntityMentions(doc: Document with BestEntityMentionResolvedDocument): Unit = {
-    for( bme <-doc.bestEntityMentions){
-      out.println(bme.offset + "\t" + bme.text + "\t" + bme.bestEntityMention)
+  def printEntityMentions(doc: Document with BestMentionResolvedDocument): Unit = {
+    for( bme <-doc.bestMentions){
+      out.println(bme.offset + "\t" + bme.text + "\t" + bme.bestMention)
     }
   }
 

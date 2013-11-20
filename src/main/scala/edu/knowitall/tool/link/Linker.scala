@@ -6,7 +6,7 @@ import edu.knowitall.repr.sentence.Postagged
 import edu.knowitall.repr.sentence.Chunked
 import edu.knowitall.tool.sentence.OpenIEExtracted
 import edu.knowitall.tool.coref.CorefResolver
-import edu.knowitall.repr.bestentitymention.BestEntityMentionResolvedDocument
+import edu.knowitall.repr.bestmention.BestMentionResolvedDocument
 import edu.knowitall.repr.link.Link
 import edu.knowitall.repr.link.FreeBaseLink
 import edu.knowitall.repr.coref.CorefResolved
@@ -100,10 +100,10 @@ trait OpenIELinker extends OpenIELinked {
 
 
   private def resolveArg(indexedText: Seq[(Char, Int)], ds: DocumentSentence[Sentence with OpenIEExtracted]) = {
-    val bestMentions = if (this.isInstanceOf[BestEntityMentionResolvedDocument]) {
+    val bestMentions = if (this.isInstanceOf[BestMentionResolvedDocument]) {
       (indexedText.headOption, indexedText.lastOption) match {
         case (Some((_, chStart)), Some((_, chEnd))) =>
-          this.asInstanceOf[BestEntityMentionResolvedDocument].bestEntityMentionsBetween(indexedText.head._2, indexedText.last._2 + 1)
+          this.asInstanceOf[BestMentionResolvedDocument].bestMentionsBetween(indexedText.head._2, indexedText.last._2 + 1)
         case _ => Nil
       }
 
