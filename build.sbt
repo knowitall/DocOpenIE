@@ -20,6 +20,8 @@ libraryDependencies ++= Seq(
   "edu.washington.cs.knowitall.nlptools" %% "nlptools-chunk-opennlp" % "2.4.4",
   "edu.washington.cs.knowitall.nlptools" %% "nlptools-parse-clear" % "2.4.4",
   "edu.washington.cs.knowitall.nlptools" %% "nlptools-coref-stanford" % "2.4.4",
+  "edu.washington.cs.knowitall.nlptools" %% "nlptools-conf-weka" % "2.4.4",
+  "edu.washington.cs.knowitall.nlptools" %% "nlptools-conf-breeze" % "2.4.4",
   "edu.washington.cs.knowitall.taggers" %% "taggers-core" % "0.3",
   "com.twitter" % "chill_2.10" % "0.3.5",
   "com.rockymadden.stringmetric" % "stringmetric-core" % "0.25.3")
