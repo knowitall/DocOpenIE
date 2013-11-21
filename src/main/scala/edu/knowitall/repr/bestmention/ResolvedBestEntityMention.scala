@@ -30,6 +30,8 @@ object ResolvedBestMention {
 
 trait FullResolvedBestMention extends ResolvedBestMention with BestResolved
 
+case class CorefResolvedBestMention(target: Entity, bestEntity: Entity) extends FullResolvedBestMention
+
 object FullResolvedBestMention {
   case class FullResolvedBestMentionImpl(target: Entity, bestEntity: Entity) extends ResolvedBestMention with BestResolved
   def apply(target: Entity, bestEntity: Entity) = FullResolvedBestMentionImpl(target, bestEntity)

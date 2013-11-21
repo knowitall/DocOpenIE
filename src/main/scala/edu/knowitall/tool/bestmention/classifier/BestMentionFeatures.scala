@@ -20,7 +20,7 @@ object BMFeature {
   }
 }
 
-class BestMentionFeatures extends FeatureSet[ResolvedBestMention, Double] {
+object BestMentionFeatures extends FeatureSet[ResolvedBestMention, Double] {
 
   import BMFeature.toDouble
 
@@ -29,12 +29,11 @@ class BestMentionFeatures extends FeatureSet[ResolvedBestMention, Double] {
   })
   
   val typeFeatures = List(
-    BMFeature("is ContainmentBestMention", toDouble({ bem: ResolvedBestMention =>
-      bem.isInstanceOf[ContainmentBestMention]
-    })),
-    BMFeature("is ContainerBestMention", toDouble({ bem: ResolvedBestMention =>
-      bem.isInstanceOf[ContainerBestMention]
-    })))
+    BMFeature("is ContainmentBestMention", toDouble(_.isInstanceOf[ContainmentBestMention])),
+    BMFeature("is ContainerBestMention", toDouble(_.isInstanceOf[ContainerBestMention])),
+    BMFeature("is CorefResolvedBestMention", toDouble(_.isInstanceOf[CorefResolvedBestMention]))
+  )
+
 
   val featuresList = EntityType.types.map(isTypeFeature) ++ typeFeatures
 

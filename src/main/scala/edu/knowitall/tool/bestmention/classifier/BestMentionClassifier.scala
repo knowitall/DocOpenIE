@@ -12,8 +12,8 @@ object BestMentionClassifier {
   
   var breeze = true
   
-  val wekaBestMentionTrainer = new WekaLogisticTrainer(new BestMentionFeatures()) 
-  val breezeBestMentionTrainer = new BreezeLogisticRegressionTrainer(new BestMentionFeatures())
+  val wekaBestMentionTrainer = new WekaLogisticTrainer(BestMentionFeatures) 
+  val breezeBestMentionTrainer = new BreezeLogisticRegressionTrainer(BestMentionFeatures)
   
   def apply(training: Seq[Labelled[ResolvedBestMention]]) = {
     if (breeze)
