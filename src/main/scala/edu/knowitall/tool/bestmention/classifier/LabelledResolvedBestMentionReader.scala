@@ -10,7 +10,7 @@ import edu.knowitall.common.Timing
 case class LabelledResolvedBestMentionReader(trainingFile: File, docsPath: File) extends Iterable[Labelled[ResolvedBestMention]] {
 
   require(trainingFile.exists() && trainingFile.isFile(), "Invalid training file")
-  require(docsPath.exists() && docsPath.isFile(), "Invalid doc path")
+  require(docsPath.exists() && docsPath.isDirectory(), "Invalid doc path")
   
   // A map from DocId to Doc
   val docsMap = docsPath.listFiles().map(FullDocSerializer.deserializeFromFile).map(d => (d.docId -> d)).toMap
