@@ -86,7 +86,7 @@ trait BestMentionsFound extends BestMentionResolvedDocument {
     entities.toList
   }
 
-  val bestMentionFinder: bestMentionFinder
+  val bestMentionFinder: BestMentionFinder
 
   //iterate over entities and use bestMentionFinder.findBestEntity to
   // find the bestMentions in the Document
