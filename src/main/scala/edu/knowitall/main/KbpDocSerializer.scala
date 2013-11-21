@@ -75,9 +75,9 @@ object FullDocSerializer {
     }
   }
 
-  def deserializeFromFile(file: File): Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestMentionResolvedDocument with StanfordSerializableNERAnnotated with DocId = {
+  def deserializeFromFile(file: File): ExtractedDocument = {
     using(new ObjectInputStream(new FileInputStream(file))) { ois =>
-      val meatLocker = ois.readObject().asInstanceOf[MeatLocker[Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestMentionResolvedDocument with StanfordSerializableNERAnnotated with BestMentionResolvedDocument with DocId]]
+      val meatLocker = ois.readObject().asInstanceOf[MeatLocker[ExtractedDocument]]
       meatLocker.get
     }
   }

@@ -48,7 +48,7 @@ object ResolvedBestMentionWriter {
       "doc id"
     )
   
-  private def writeRBM(index: Int, rbm: ResolvedBestMention, doc: RBMDoc): String = {
+  def writeRBM(index: Int, rbm: ResolvedBestMention, doc: RBMDoc): String = {
     
     def noTabs(s: String) = s.replaceAll("\t", " ").replaceAll("\n", " ")
     
