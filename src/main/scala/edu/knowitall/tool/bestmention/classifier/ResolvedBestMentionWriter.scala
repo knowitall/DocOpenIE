@@ -5,6 +5,7 @@ import edu.knowitall.repr.document.DocId
 import edu.knowitall.repr.document.Sentenced
 import edu.knowitall.repr.sentence.Sentence
 import edu.knowitall.repr.bestmention._
+import edu.knowitall.tool.bestmention.classifier.BestMentionFeatures
 import edu.knowitall.main.FullDocSerializer
 import edu.knowitall.common.Resource.using
 import java.io.File
@@ -37,16 +38,23 @@ object ResolvedBestMentionWriter {
   }
   
   private def writeRBM(index: Int, rbm: ResolvedBestMention, doc: RBMDoc): String = {
+    
+    def noTabs(s: String) = s.replaceAll("\t", " ")
+    
+    def twoPlaces(d: Double) = "%.02f" format d
+    
+    val featureVector = BestMentionFeatures.vectorize(rbm).map(twoPlaces)
+    
     val fields = Seq(
       "",
       rbm.text,
       rbm.bestMention,
       context(rbm, doc),
-      getBestContext(rbm, doc),
-      index,
+      getBestContext(rbm, doc)) ++ featureVector ++ Seq(
+      index.toString,
       doc.docId
     )
-    fields.mkString("\t")
+    fields.map(noTabs).mkString("\t")
   }
   
   private def findSent(offset: Int, doc: RBMDoc) = {
