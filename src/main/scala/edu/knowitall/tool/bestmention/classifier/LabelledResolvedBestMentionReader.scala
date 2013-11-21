@@ -16,12 +16,13 @@ case class LabelledResolvedBestMentionReader(trainingFile: File, docsPath: File)
   val docsMap = docsPath.listFiles().map(FullDocSerializer.deserializeFromFile).map(d => (d.docId -> d)).toMap
   
   // a list of (label, doc Index, doc Id)
-  def labelIndexId = using(io.Source.fromFile(trainingFile)) { trainingSource =>
+  val labelIndexId = using(io.Source.fromFile(trainingFile)) { trainingSource =>
     trainingSource.getLines
     .map(_.split("\t"))
     .filter(_.length > 3)
     .map(s => (s(0), s(s.length-2), s(s.length-1)))
     .map({case (labelStr, indexStr, docIdStr) => (labelStr == "1", indexStr.toInt, docIdStr) })
+    .toList
   }
 
   val labelledResolvedBestMentions = {
