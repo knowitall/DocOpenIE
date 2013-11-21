@@ -25,13 +25,13 @@ trait bestMentionFinder {
   def findBestEntity(
       entity: Entity, 
       docText: String, 
-      namedEntityCollection: NamedEntityCollection): Option[BestMention]
+      namedEntityCollection: NamedEntityCollection): Option[ResolvedBestMention]
 }
 
 trait BestMentionsFound extends BestMentionResolvedDocument {
   this: Document with StanfordNERAnnotated =>
 
-  override type B = BestMention
+  override type B = ResolvedBestMention
 
   //compute NamedEntityCollection data structure with NER over sentences
   private lazy val namedEntityCollection = {

@@ -26,6 +26,7 @@ import edu.knowitall.tool.sentence.OpenIEExtractor
 import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.tool.link.OpenIELinked.ArgContext
 import edu.knowitall.repr.link.FreeBaseLink
+import edu.knowitall.repr.bestmention.ResolvedBestMention
 import edu.knowitall.repr.bestmention.BestMentionResolvedDocument
 import edu.stanford.nlp.pipeline.Annotation
 
@@ -36,7 +37,7 @@ case class ExtractedDocument(
   override val annotationBytes: Array[Byte],
   override val links: List[FreeBaseLink],
   override val argContexts: List[ArgContext],
-  override val bestMentions: List[BestMention],
+  override val bestMentions: List[ResolvedBestMention],
   val docId: String)
 extends Document(text)
   with OpenIELinked 
@@ -46,7 +47,7 @@ extends Document(text)
   with BestMentionResolvedDocument 
   with DocId {
   
-  override type B = BestMention
+  override type B = ResolvedBestMention
   
   override def sentences = sentencesList.toStream
 }

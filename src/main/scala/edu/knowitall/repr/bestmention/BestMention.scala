@@ -50,7 +50,7 @@ object BestMention{
 trait BestMentionResolvedDocument {
   this: Document =>
 
-  type B <: BestMention
+  type B <: ResolvedBestMention
 
   def bestMentions: Seq[B];
 

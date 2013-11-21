@@ -23,10 +23,14 @@ import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.tool.link.OpenIELinker
 import edu.knowitall.browser.entity.EntityLinker
 import java.io.File
+import edu.knowitall.repr.bestmention.ResolvedBestMention
 import edu.knowitall.tool.bestmention.BestMentionsFound
 import edu.knowitall.tool.bestmention.BestMentionFinderOriginalAlgorithm
 import edu.knowitall.repr.link.LinkedDocument
 import edu.knowitall.repr.link.FreeBaseLink
+import edu.knowitall.repr.bestmention.Entity
+import edu.knowitall.repr.bestmention.EntityType
+import edu.knowitall.repr.bestmention.EntityType._
 import edu.knowitall.repr.bestmention.BestMentionResolvedDocument
 import edu.knowitall.repr.bestmention.BestMention
 import edu.knowitall.repr.coref.MentionCluster
@@ -123,8 +127,8 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
     linksInCluster.groupBy(f => f.id).values.map(f => f.head).toSeq
   }
 
-  def getUniquebestMentionsInCluster(cluster: MentionCluster, bestMentions: Seq[BestMention]): Seq[BestMention] = {
-    var bestMentionsInCluster = Seq[BestMention]()
+  def getUniquebestMentionsInCluster(cluster: MentionCluster, bestMentions: Seq[ResolvedBestMention]): Seq[ResolvedBestMention] = {
+    var bestMentionsInCluster = Seq[ResolvedBestMention]()
     for(m <- cluster.mentions){
       for(bem <- bestMentions){
         if(bem.offset == m.offset){
@@ -135,8 +139,19 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
     bestMentionsInCluster.groupBy(f => f.bestMention).values.map(f => f.head).toSeq
   }
 
-  def makeNewbestMentionsForPronounsInCluster(cluster: MentionCluster, bestName: String) = {
-    for(m <- cluster.mentions; if m.isPronoun) yield BestMention(m.text,m.offset,bestName)
+  def makeNewbestMentionsForPronounsInCluster(cluster: MentionCluster, bestName: String, bestType: EntityType) = {
+    for(m <- cluster.mentions; if m.isPronoun) yield ResolvedBestMention(Entity(m.text,m.offset,m.text,bestType),bestName)
+  }
+  
+  private val locRegex = "location|place|city|country|state|province".r
+  private val orgRegex = "business|corporation|company".r
+  private val perRegex = "people|person".r
+  
+  def guessType(fb: FreeBaseLink): EntityType = {
+    if (fb.types.exists(t => locRegex.findFirstIn(t).isDefined)) Location
+    else if (fb.types.exists(t => orgRegex.findFirstIn(t).isDefined)) Organization
+    else if (fb.types.exists(t => perRegex.findFirstIn(t).isDefined)) Person
+    else Other
   }
 
   def extract(d: InputDoc): OutputDoc = {
@@ -166,7 +181,8 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
       val mentions = cluster.mentions
       val links = getUniqueLinksInCluster(cluster,doc.links)
       val bestMentions = getUniquebestMentionsInCluster(cluster, doc.bestMentions)
-      var bestName :Option[String] = None
+      var bestName: Option[String] = None
+      var bestType: Option[EntityType] = None
       if(debug){
 	      println("Cluster number " + clusterIndex)
 	      println("Mentions: ")
@@ -184,12 +200,14 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
       }
       if(links.length ==1)  {
         bestName = Some(links.head.name)
+        bestType = Some(guessType(links.head))
       }
       else if(bestMentions.length ==1) {
         bestName = Some(bestMentions.head.bestMention)
+        bestType = Some(bestMentions.head.target.entityType)
       }
       if(bestName.isDefined){
-        val newbestMentions = makeNewbestMentionsForPronounsInCluster(cluster,bestName.get)
+        val newbestMentions = makeNewbestMentionsForPronounsInCluster(cluster,bestName.get, bestType.get)
         corefExpandedbestMentions = corefExpandedbestMentions ++ newbestMentions
       }
       clusterIndex += 1
@@ -204,7 +222,7 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
     }
     val newDoc = new Document(d.text) with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordNERAnnotated with BestMentionResolvedDocument with DocId {
       type M = Mention
-      type B = BestMention
+      type B = ResolvedBestMention
       override val argContexts = doc.argContexts
       val links = doc.links
       val clusters = doc.clusters
