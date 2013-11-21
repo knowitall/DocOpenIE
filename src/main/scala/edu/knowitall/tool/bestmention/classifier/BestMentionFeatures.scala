@@ -41,7 +41,7 @@ object BestMentionFeatures extends FeatureSet[ResolvedBestMention, Double] {
     BMFeature("Char Proximity", { bem => BestMentionHelper.charProximity(bem, 2500) }) // avg doc length is about 2500
   )
   
-  val featuresList = EntityType.types.map(isTypeFeature) ++ typeFeatures
+  val featuresList = EntityType.types.map(isTypeFeature) ++ typeFeatures ++ docFeatures
 
   override val featureMap = scala.collection.immutable.SortedMap.empty[String, BMFeature] ++ featuresList.map(f => (f.name -> f)).toMap
 }
