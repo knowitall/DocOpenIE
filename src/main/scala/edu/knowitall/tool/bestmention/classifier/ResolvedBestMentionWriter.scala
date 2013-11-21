@@ -56,14 +56,19 @@ object ResolvedBestMentionWriter {
     }
   }
   
+  private def docContext(offset: Int, doc: RBMDoc) = {
+    doc.text.drop(offset - 40).take(offset + 40).replaceAll("\n|\t", "\\")
+  }
+  
   private def getBestContext(rbm: ResolvedBestMention, doc: RBMDoc): String = {
     if (rbm.isInstanceOf[FullResolvedBestMention]) {
       val offset = rbm.asInstanceOf[FullResolvedBestMention].bestEntity.offset
-      findSent(offset, doc).map(_.sentence.text).getOrElse("Best Context not found.")
+      val sentContext = findSent(offset, doc).map(_.sentence.text)
+      sentContext.getOrElse(docContext(offset, doc))
     } else "No Best Context."
   }
   
   private def context(rbm: ResolvedBestMention, doc: RBMDoc): String = {
-    findSent(rbm.offset, doc).map(_.sentence.text).getOrElse("Target Context not found.")
+    findSent(rbm.offset, doc).map(_.sentence.text).getOrElse(docContext(rbm.offset, doc))
   }
 }
