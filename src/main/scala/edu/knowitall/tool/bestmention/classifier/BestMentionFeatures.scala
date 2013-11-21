@@ -35,8 +35,12 @@ object BestMentionFeatures extends FeatureSet[ResolvedBestMention, Double] {
     BMFeature("is FullResolvedBestMention", toDouble(_.isInstanceOf[FullResolvedBestMention])),
     BMFeature("is LinkResolvedBestMention", toDouble(_.isInstanceOf[LinkResolvedBestMention]))
   )
-
-
+ 
+  val docFeatures = List(
+    BMFeature("Ambiguous Candidate Count", _.candidateCount),
+    BMFeature("Char Proximity", { bem => BestMentionHelper.charProximity(bem, 2500) }) // avg doc length is about 2500
+  )
+  
   val featuresList = EntityType.types.map(isTypeFeature) ++ typeFeatures
 
   override val featureMap = scala.collection.immutable.SortedMap.empty[String, BMFeature] ++ featuresList.map(f => (f.name -> f)).toMap
@@ -86,6 +90,12 @@ object BestMentionHelper {
     doc.text.drop(offset - 40).take(80).replaceAll("\\s", " ")
   }
   
-  
-  
+  def charProximity(rbm: ResolvedBestMention, default: Int): Int = {
+    if (rbm.isInstanceOf[FullResolvedBestMention]) {
+      val fbm = rbm.asInstanceOf[FullResolvedBestMention]
+      Math.abs(fbm.target.offset - fbm.bestEntity.offset)
+    } else {
+      default
+    }
+  }  
 }
