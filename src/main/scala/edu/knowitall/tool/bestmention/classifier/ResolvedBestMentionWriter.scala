@@ -5,7 +5,6 @@ import edu.knowitall.repr.document.DocId
 import edu.knowitall.repr.document.Sentenced
 import edu.knowitall.repr.sentence.Sentence
 import edu.knowitall.repr.bestmention._
-import edu.knowitall.tool.bestmention.classifier.BestMentionFeatures
 import edu.knowitall.main.FullDocSerializer
 import edu.knowitall.common.Resource.using
 import java.io.File
