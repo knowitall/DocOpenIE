@@ -7,6 +7,7 @@ import edu.knowitall.repr.sentence.Sentence
 import edu.knowitall.repr.bestmention._
 import edu.knowitall.main.FullDocSerializer
 import edu.knowitall.common.Resource.using
+import BestMentionHelper.{targetContext, bestContext}
 import java.io.File
 
 object ResolvedBestMentionWriter {
@@ -59,34 +60,11 @@ object ResolvedBestMentionWriter {
       "",
       rbm.text,
       rbm.bestMention,
-      context(rbm, doc),
-      getBestContext(rbm, doc)) ++ featureVector ++ Seq(
+      targetContext(rbm, doc),
+      bestContext(rbm, doc)) ++ featureVector ++ Seq(
       index.toString,
       doc.docId
     )
     fields.map(noTabs).mkString("\t")
-  }
-  
-  private def findSent(offset: Int, doc: RBMDoc) = {
-    doc.sentences.find { ds => 
-      val end = ds.offset + ds.sentence.text.length
-      offset > ds.offset && offset < end
-    }
-  }
-  
-  private def docContext(offset: Int, doc: RBMDoc) = {
-    doc.text.drop(offset - 40).take(40).replaceAll("\\s", " ")
-  }
-  
-  private def getBestContext(rbm: ResolvedBestMention, doc: RBMDoc): String = {
-    if (rbm.isInstanceOf[FullResolvedBestMention]) {
-      val offset = rbm.asInstanceOf[FullResolvedBestMention].bestEntity.offset
-      val sentContext = findSent(offset, doc).map(_.sentence.text)
-      sentContext.getOrElse(docContext(offset, doc))
-    } else "No Best Context."
-  }
-  
-  private def context(rbm: ResolvedBestMention, doc: RBMDoc): String = {
-    findSent(rbm.offset, doc).map(_.sentence.text).getOrElse(docContext(rbm.offset, doc))
   }
 }

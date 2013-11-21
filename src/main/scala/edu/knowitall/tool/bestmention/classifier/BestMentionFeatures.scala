@@ -39,3 +39,51 @@ object BestMentionFeatures extends FeatureSet[ResolvedBestMention, Double] {
 
   override val featureMap = scala.collection.immutable.SortedMap.empty[String, BMFeature] ++ featuresList.map(f => (f.name -> f)).toMap
 }
+
+object BestMentionHelper {
+  
+  import edu.knowitall.repr.document.DocId
+  import edu.knowitall.repr.document.Document
+  import edu.knowitall.repr.document.Sentenced
+  import edu.knowitall.repr.sentence.Sentence
+  
+  // a document that a resolved-best-mention might come from... hence R.B.M. Doc
+  type RBMDoc = Document with Sentenced[_ <: Sentence] with BestMentionResolvedDocument with DocId
+  
+  def context(offset: Int, doc: RBMDoc): String = {
+    findSent(offset, doc)
+    .map(_.sentence.text)
+    .getOrElse {
+        docContext(offset, doc)
+    }
+  }
+  
+  def targetContext(rbm: ResolvedBestMention, doc: RBMDoc): String = context(rbm.target.offset, doc)
+  
+  def bestContext(rbm: ResolvedBestMention, doc: RBMDoc): String = {
+    if (rbm.isInstanceOf[FullResolvedBestMention]) {
+      context(rbm.asInstanceOf[FullResolvedBestMention].bestEntity.offset, doc)
+    } else if (rbm.isInstanceOf[ContainerBestMention]) {
+      context(rbm.asInstanceOf[ContainerBestMention].containerEntity.offset, doc)
+    } else if (rbm.isInstanceOf[ContainmentBestMention]) {
+      Seq(context(rbm.target.offset, doc), 
+          context(rbm.asInstanceOf[ContainmentBestMention].containerEntity.offset, doc)).mkString(" ")
+    } else {
+      "NA"
+    }
+  }
+  
+  private def findSent(offset: Int, doc: RBMDoc) = {
+    doc.sentences.find { ds => 
+      val end = ds.offset + ds.sentence.text.length
+      offset > ds.offset && offset < end
+    }
+  }
+  
+  private def docContext(offset: Int, doc: RBMDoc) = {
+    doc.text.drop(offset - 40).take(40).replaceAll("\\s", " ")
+  }
+  
+  
+  
+}
