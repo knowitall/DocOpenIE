@@ -158,18 +158,27 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
 
   def extract(d: InputDoc): OutputDoc = {
 
-    val doc  = new Document(d.text) with OpenIELinker with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordNERAnnotated with BestMentionsFound {
+    val linkedDoc = new Document(d.text) with OpenIELinker with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordNERAnnotated {
       type M = Mention
       val clusters = d.clusters
       val sentences = d.sentences
       val linker = entityLinker
       val NERAnnotatedDoc = d.NERAnnotatedDoc
+    }
+    
+    val doc  = new Document(d.text) with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordNERAnnotated with BestMentionsFound {
+      type M = Mention
+      val clusters = linkedDoc.clusters
+      val sentences = linkedDoc.sentences
+      val argContexts = linkedDoc.argContexts
+      val links = linkedDoc.links
+      val NERAnnotatedDoc = linkedDoc.NERAnnotatedDoc
       val bestMentionFinder = bestMentionFinderAlgorithm
-      val linkEntities = links.map(LinkResolvedBestMention.linkEntity)
       override lazy val namedEntityCollection = {
-        val organizations = getListOfNERType(Organization) ++ linkEntities.filter(_.entityType == Organization)
-        val locations = getListOfNERType(Location) ++ linkEntities.filter(_.entityType == Location)
-        val people = getListOfNERType(Person) ++ linkEntities.filter(_.entityType == Person)
+        lazy val linkEntities = links.map(LinkResolvedBestMention.linkEntity)
+        lazy val organizations = getListOfNERType(Organization) ++ linkEntities.filter(_.entityType == Organization)
+        lazy val locations = getListOfNERType(Location) ++ linkEntities.filter(_.entityType == Location)
+        lazy val people = getListOfNERType(Person) ++ linkEntities.filter(_.entityType == Person)
         NamedEntityCollection(organizations, locations, people)
       }
     }
