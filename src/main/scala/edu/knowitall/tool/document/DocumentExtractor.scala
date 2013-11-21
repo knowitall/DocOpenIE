@@ -23,6 +23,7 @@ import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.tool.link.OpenIELinker
 import edu.knowitall.browser.entity.EntityLinker
 import java.io.File
+import edu.knowitall.tool.bestmention.NamedEntityCollection
 import edu.knowitall.tool.bestmention.BestMentionsFound
 import edu.knowitall.tool.bestmention.BestMentionFinderOriginalAlgorithm
 import edu.knowitall.repr.link.LinkedDocument
@@ -164,6 +165,13 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
       val linker = entityLinker
       val NERAnnotatedDoc = d.NERAnnotatedDoc
       val bestMentionFinder = bestMentionFinderAlgorithm
+      val linkEntities = links.map(LinkResolvedBestMention.linkEntity)
+      override lazy val namedEntityCollection = {
+        val organizations = getListOfNERType(Organization) ++ linkEntities.filter(_.entityType == Organization)
+        val locations = getListOfNERType(Location) ++ linkEntities.filter(_.entityType == Location)
+        val people = getListOfNERType(Person) ++ linkEntities.filter(_.entityType == Person)
+        NamedEntityCollection(organizations, locations, people)
+      }
     }
     if(debug){
 	    println("Document : " + d.sentences.head)

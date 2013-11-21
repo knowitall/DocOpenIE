@@ -60,7 +60,7 @@ trait OpenIELinker extends OpenIELinked {
   import OpenIELinked.ArgContext
 
   // Hardcoded threshold for linker score.
-  val minCombinedScore = 0.0
+  val minCombinedScore = 5.0
 
   private def sentenceContaining(chStart: Int, chEnd: Int): Option[DocumentSentence[Sentence with OpenIEExtracted]] = {
     this.sentences.find { s =>

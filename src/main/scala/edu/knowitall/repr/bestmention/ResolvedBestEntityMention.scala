@@ -66,7 +66,7 @@ object CorefFullResolvedBestMention {
 
 case class LinkResolvedBestMention(m: Mention, link: FreeBaseLink, cluster: MentionCluster, candidateCount: Int) extends CorefFullResolvedBestMention {
   import LinkResolvedBestMention._
-  val bestEntity = Entity(link.text, link.offset, link.name, guessType(link))
+  val bestEntity = linkEntity(link)
   val target = Entity(m.text, m.offset, m.text, bestEntity.entityType)
 }
 
@@ -74,6 +74,8 @@ object LinkResolvedBestMention {
   private val locRegex = "location|place|city|country|state|province".r
   private val orgRegex = "business|corporation|company".r
   private val perRegex = "people|person".r
+  
+  def linkEntity(link: FreeBaseLink) = Entity(link.text, link.offset, link.name, guessType(link))
   
   def guessType(fb: FreeBaseLink): EntityType = {
     if (fb.types.exists(t => locRegex.findFirstIn(t).isDefined)) Location

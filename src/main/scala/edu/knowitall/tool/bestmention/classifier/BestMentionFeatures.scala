@@ -33,12 +33,23 @@ object BestMentionFeatures extends FeatureSet[ResolvedBestMention, Double] {
     BMFeature("is ContainerBestMention", toDouble(_.isInstanceOf[ContainerBestMention])),
     BMFeature("is CorefResolvedBestMention", toDouble(_.isInstanceOf[CorefResolvedBestMention])),
     BMFeature("is FullResolvedBestMention", toDouble(_.isInstanceOf[FullResolvedBestMention])),
-    BMFeature("is LinkResolvedBestMention", toDouble(_.isInstanceOf[LinkResolvedBestMention]))
+    BMFeature("is LinkResolvedBestMention", toDouble(_.isInstanceOf[LinkResolvedBestMention])),
+    BMFeature("Link Score", { bem => 
+      if (bem.isInstanceOf[LinkResolvedBestMention])
+        bem.asInstanceOf[LinkResolvedBestMention].link.score
+      else 0.0
+    })
   )
  
   val docFeatures = List(
     BMFeature("Ambiguous Candidate Count", _.candidateCount),
-    BMFeature("Char Proximity", { bem => BestMentionHelper.charProximity(bem, 2500) }) // avg doc length is about 2500
+    BMFeature("Char Proximity", { bem => BestMentionHelper.charProximity(bem, 2500) }), // avg doc length is about 2500
+    BMFeature("Target Precedes Best", toDouble { bem => 
+      bem.isInstanceOf[FullResolvedBestMention] && bem.target.offset < bem.asInstanceOf[FullResolvedBestMention].bestEntity.offset
+    }),
+    BMFeature("Target After Best", toDouble { bem => 
+      bem.isInstanceOf[FullResolvedBestMention] && bem.target.offset > bem.asInstanceOf[FullResolvedBestMention].bestEntity.offset
+    })
   )
   
   val featuresList = EntityType.types.map(isTypeFeature) ++ typeFeatures ++ docFeatures

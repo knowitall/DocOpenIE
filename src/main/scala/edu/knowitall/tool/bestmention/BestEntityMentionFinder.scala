@@ -34,14 +34,14 @@ trait BestMentionsFound extends BestMentionResolvedDocument {
   override type B = ResolvedBestMention
 
   //compute NamedEntityCollection data structure with NER over sentences
-  private lazy val namedEntityCollection = {
+  lazy val namedEntityCollection = {
     val organizations = getListOfNERType(Organization)
     val locations = getListOfNERType(Location)
     val people = getListOfNERType(Person)
     NamedEntityCollection(organizations, locations, people)
   }
 
-  private def getListOfNERType(nerType: EntityType) = documentEntities.filter(_.entityType == nerType)
+  def getListOfNERType(nerType: EntityType) = documentEntities.filter(_.entityType == nerType)
 
   private lazy val documentEntities = {
     var entities = List[Entity]()
@@ -158,9 +158,9 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
         if (!words.zipWithIndex.exists { case (word, index) => word(0) != originalString(index) });
         (cw, index) <- cs.nameWords.zipWithIndex;
         if (cw == words.head)) yield {
-        (entity, cs.copy(name = cs.nameWords.drop(index).mkString(" ")))
+        cs.copy(name = cs.nameWords.drop(index).mkString(" "))
       }
-      if (acronymMatches.nonEmpty) return FullResolvedBestMention(acronymMatches.head._1, acronymMatches.head._2, acronymMatches.size)
+      if (acronymMatches.nonEmpty) return FullResolvedBestMention(entity, acronymMatches.head, distinctNameCount(acronymMatches))
      
 
       //        // if in parentheses and nothing was found...
@@ -202,7 +202,7 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
         if ((cs.nameWords.length > originalWords.length) && 
             ((cs.nameWords.takeRight(originalWords.length).mkString(" ") == originalString) || 
                 (cs.nameWords.take(originalWords.length).mkString(" ") == originalString)))) 
-        yield (entity, cs)
+        yield cs
           // Catch cases where a candidate is a word-prefix or suffix (e.g. Centers for Disease Control => U.S. Centers for Disease Control)
           // Features:
           // proximity
@@ -210,7 +210,7 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
           // left match
           // right match
       if (matches.nonEmpty) 
-        return FullResolvedBestMention(matches.head._1, matches.head._2, matches.size)
+        return FullResolvedBestMention(entity, matches.head, distinctNameCount(matches))
     }
 
     // finally check if the original string if prefix of an organization
@@ -218,13 +218,13 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
          if (cs.name.toLowerCase().startsWith(originalString.toLowerCase()) && 
              cs.name.length() > originalString.length() && 
              cs.nameWords.length == 1))
-      yield (entity, cs)
+      yield cs
         // check if original string is a character-prefix of a one-word candidate.
         // Feaures:
         // proximity
         // length disparity (weak)
     if (matches.nonEmpty) 
-        return FullResolvedBestMention(matches.head._1, matches.head._2, matches.size)
+        return FullResolvedBestMention(entity, matches.head, distinctNameCount(matches))
 
     IdentityBestMention(entity)
   }
@@ -345,20 +345,20 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
             // size of "candidates" in this scope
             // containment relationship features
             // was abbreviation expanded
-            ContainmentBestMention(entity, containedMap(containerEntity), containerEntity, candidates.size)
+            ContainmentBestMention(entity, containedMap(containerEntity), containerEntity, distinctNameCount(candidates.keys.toSeq))
           }
           case None =>
             IdentityBestMention(entity)
         }
       } else {
         //sort by distance to original string
-        val containerStrings = containerMap.keys
-        val sortedContainerStrings = sortCandidateStringsByProximity(containerStrings.toList, entity.offset)
-        ContainerBestMention(entity, sortedContainerStrings.head, containerStrings.size)
+        val containers = containerMap.keys.toList
+        val sortedContainerStrings = sortCandidateStringsByProximity(containers, entity.offset)
+        ContainerBestMention(entity, sortedContainerStrings.head, distinctNameCount(containers))
       }
     } else {
       val candidate = candidates.head
-      FullResolvedBestMention(entity, candidate.copy(name = expandAbbreviation(locationCasing(candidate.name))), candidates.size)
+      FullResolvedBestMention(entity, candidate.copy(name = expandAbbreviation(locationCasing(candidate.name))), distinctNameCount(candidates))
     }
   }
   private def findBestPersonString(
@@ -470,6 +470,8 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
 }
 
 object BestMentionFinderOriginalAlgorithm {
+  
+  def distinctNameCount(entities: Seq[Entity]): Int = entities.map(_.name).distinct.size
   
   def locationCasing(str: String): String = {
     var words = List[String]()
@@ -643,7 +645,6 @@ object BestMentionFinderOriginalAlgorithm {
       }
     }
   }
-
 }
 
 case class NamedEntityCollection(
