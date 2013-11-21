@@ -20,7 +20,7 @@ import scala.util.matching.Regex
 import com.rockymadden.stringmetric.similarity.JaroWinklerMetric
 
 
-trait bestMentionFinder {
+trait BestMentionFinder {
 
   def findBestEntity(
       entity: Entity, 
@@ -97,7 +97,7 @@ trait BestMentionsFound extends BestMentionResolvedDocument {
   }
 }
 
-class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
+class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
   
   import BestMentionFinderOriginalAlgorithm._
   
@@ -439,8 +439,13 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
     }
     return false
   }
+}
 
-  private def locationContainsLocation(container: String, contained: String): Boolean = {
+object BestMentionFinderOriginalAlgorithm {
+  
+  def distinctNameCount(entities: Seq[Entity]): Int = entities.map(_.name).distinct.size
+  
+  def locationContainsLocation(container: String, contained: String): Boolean = {
     val cities = BestMentionFinderOriginalAlgorithm.TipsterData.cities
     val stateOrProvinces = BestMentionFinderOriginalAlgorithm.TipsterData.stateOrProvinces
     val countries = BestMentionFinderOriginalAlgorithm.TipsterData.countries
@@ -467,11 +472,6 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
     }
     return false
   }
-}
-
-object BestMentionFinderOriginalAlgorithm {
-  
-  def distinctNameCount(entities: Seq[Entity]): Int = entities.map(_.name).distinct.size
   
   def locationCasing(str: String): String = {
     var words = List[String]()
@@ -548,7 +548,7 @@ object BestMentionFinderOriginalAlgorithm {
     io.Source.fromFile(new File("/scratch/usr/rbart/git/UWELExpanded/src/main/resources/edu/knowitall/entitylinking/extended/utils/stopwords.txt"))(scala.io.Codec.UTF8).getLines.flatMap(_.split(",")).map(_.toLowerCase).toSet
   }
 
-  private object TipsterData {
+  object TipsterData {
 
     private val tipsterFile = new File("/scratch/usr/rbart/git/UWELExpanded/src/main/resources/edu/knowitall/entitylinking/extended/utils/TipsterGazetteer.txt")
     private val cityProvincePattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(PROVINCE.*""".r

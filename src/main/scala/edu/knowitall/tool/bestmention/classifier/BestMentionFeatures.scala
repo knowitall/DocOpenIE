@@ -23,6 +23,7 @@ object BMFeature {
 object BestMentionFeatures extends FeatureSet[ResolvedBestMention, Double] {
 
   import BMFeature.toDouble
+  import BestMentionHelper._
 
   def isTypeFeature(typ: EntityType): BMFeature = BMFeature(s"is a ${typ.name} rule", { bem: ResolvedBestMention =>
     if (bem.target.entityType == typ) 1.0 else 0.0
@@ -52,7 +53,24 @@ object BestMentionFeatures extends FeatureSet[ResolvedBestMention, Double] {
     })
   )
   
-  val featuresList = EntityType.types.map(isTypeFeature) ++ typeFeatures ++ docFeatures
+  val tipsterFeatures = List(
+    BMFeature("StateOrProvince contains City", toDouble { bem =>
+      if (bem.isInstanceOf[ContainerBestMention]) {
+        val cbm = bem.asInstanceOf[ContainerBestMention]
+        cbm.target.entityType == Location &&
+        stateContainsCity(cbm)
+      } else false
+    }),
+    BMFeature("Country Contains City", toDouble { bem =>
+      if (bem.isInstanceOf[ContainerBestMention]) {
+        val cbm = bem.asInstanceOf[ContainerBestMention]
+        cbm.target.entityType == Location &&
+        stateContainsCity(cbm)
+      } else false
+    })
+  )
+  
+  val featuresList = EntityType.types.map(isTypeFeature) ++ typeFeatures ++ docFeatures ++ tipsterFeatures
 
   override val featureMap = scala.collection.immutable.SortedMap.empty[String, BMFeature] ++ featuresList.map(f => (f.name -> f)).toMap
 }
@@ -64,8 +82,22 @@ object BestMentionHelper {
   import edu.knowitall.repr.document.Sentenced
   import edu.knowitall.repr.sentence.Sentence
   
+  import edu.knowitall.tool.bestmention.BestMentionFinderOriginalAlgorithm.locationContainsLocation
+  import edu.knowitall.tool.bestmention.BestMentionFinderOriginalAlgorithm.TipsterData
+  
+  
   // a document that a resolved-best-mention might come from... hence R.B.M. Doc
   type RBMDoc = Document with Sentenced[_ <: Sentence] with BestMentionResolvedDocument with DocId
+  
+  def stateContainsCity(rbm: ContainerBestMention): Boolean = { 
+    TipsterData.cities.contains(rbm.target.name) &&
+    TipsterData.stateOrProvinces.contains(rbm.containerEntity.name)
+  }
+  
+  def countryContainsCity(rbm: ContainerBestMention): Boolean = { 
+    TipsterData.cities.contains(rbm.target.name) &&
+    TipsterData.countries.contains(rbm.containerEntity.name)
+  }
   
   def context(offset: Int, doc: RBMDoc): String = {
     findSent(offset, doc)

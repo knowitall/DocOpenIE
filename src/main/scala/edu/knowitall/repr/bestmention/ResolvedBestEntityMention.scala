@@ -85,16 +85,19 @@ object LinkResolvedBestMention {
   }
 }
 
-
-
-case class ContainmentBestMention(
-    target: Entity, containedEntity:Entity, containerEntity: Entity, candidateCount: Int) extends ResolvedBestMention {
-  
-  def bestMention = containedEntity.name + ", " + containerEntity.name
-}
-
-case class ContainerBestMention(
-    target: Entity, containerEntity: Entity, candidateCount: Int) extends ResolvedBestMention {
-  
+trait ContainerBestMention extends ResolvedBestMention {
+  def containerEntity: Entity
   def bestMention = BestMentionFinderOriginalAlgorithm.locationCasing(text + ", " + containerEntity.name)
 }
+object ContainerBestMention {
+  case class ContainerBestMentionImpl(target: Entity, containerEntity: Entity, candidateCount: Int) extends ContainerBestMention
+  def apply(target: Entity, containerEntity: Entity, candidateCount: Int) =
+    ContainerBestMentionImpl(target, containerEntity, candidateCount)
+}
+
+case class ContainmentBestMention(
+    target: Entity, containedEntity:Entity, containerEntity: Entity, candidateCount: Int) extends ContainerBestMention {
+  
+  override def bestMention = containedEntity.name + ", " + containerEntity.name
+}
+
