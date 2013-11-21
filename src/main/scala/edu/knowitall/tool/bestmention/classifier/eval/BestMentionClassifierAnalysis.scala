@@ -14,8 +14,7 @@ object BestMentionClassifierAnalysis {
     val prOutFile = new File(args(2))
     val dataOutFile = new File(args(3))
     require(trainingFile.exists() && trainingFile.isFile(), "Invalid training file")
-    require(docsPath.exists() && docsPath.isFile(), "Invalid doc path")
-    
+    require(docsPath.exists() && docsPath.isDirectory(), "Invalid doc path")
     val labelledReader = LabelledResolvedBestMentionReader(trainingFile, docsPath)
     val classifier = BestMentionClassifier(labelledReader)
     val confidences = labelledReader.map(_.item).map(classifier.apply)
