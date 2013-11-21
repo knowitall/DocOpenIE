@@ -1,6 +1,10 @@
 package edu.knowitall.repr.bestmention
 
+import edu.knowitall.tool.coref.Mention
+import edu.knowitall.repr.coref.MentionCluster
+import edu.knowitall.repr.bestmention.EntityType._
 import edu.knowitall.tool.bestmention.BestMentionFinderOriginalAlgorithm
+import edu.knowitall.repr.link.FreeBaseLink
 
 trait TargetResolved {
   this: BestMention =>
@@ -17,34 +21,78 @@ trait BestResolved {
   def bestMention = bestEntity.name
 }
 
-case class IdentityBestMention(target: Entity) extends ResolvedBestMention {
-  def bestMention = target.cleanText
+trait Coref {
+  this: BestMention =>
+    
+  def cluster: MentionCluster
 }
 
-trait ResolvedBestMention extends BestMention with TargetResolved
+trait CandidateCount {
+  this: BestMention =>
+  def candidateCount: Int
+} 
 
+
+case class IdentityBestMention(target: Entity) extends ResolvedBestMention {
+  def bestMention = target.cleanText
+  def candidateCount = 0
+}
+
+trait ResolvedBestMention extends BestMention with TargetResolved with CandidateCount
 object ResolvedBestMention {
-  case class ResolvedBestMentionImpl(target: Entity, bestMention: String) extends ResolvedBestMention
-  def apply(target: Entity, bestMention: String) = ResolvedBestMentionImpl(target, bestMention)
+  case class ResolvedBestMentionImpl(target: Entity, bestMention: String, candidateCount: Int) extends ResolvedBestMention
+  def apply(target: Entity, bestMention: String, candidateCount: Int) = ResolvedBestMentionImpl(target, bestMention, candidateCount)
 }
 
 trait FullResolvedBestMention extends ResolvedBestMention with BestResolved
-
-case class CorefResolvedBestMention(target: Entity, bestEntity: Entity) extends FullResolvedBestMention
-
 object FullResolvedBestMention {
-  case class FullResolvedBestMentionImpl(target: Entity, bestEntity: Entity) extends ResolvedBestMention with BestResolved
-  def apply(target: Entity, bestEntity: Entity) = FullResolvedBestMentionImpl(target, bestEntity)
+  case class FullResolvedBestMentionImpl(target: Entity, bestEntity: Entity, candidateCount: Int) extends FullResolvedBestMention
+  def apply(target: Entity, bestEntity: Entity, candidateCount: Int) = FullResolvedBestMentionImpl(target, bestEntity, candidateCount: Int)
 }
 
+trait CorefResolvedBestMention extends ResolvedBestMention with Coref
+object CorefResolvedBestMention {
+  case class CorefResolvedBestMentionImpl(target: Entity, bestMention: String, cluster: MentionCluster, candidateCount: Int) extends CorefResolvedBestMention
+  def apply(target: Entity, bestMention: String, cluster: MentionCluster, candidateCount: Int) = 
+    CorefResolvedBestMentionImpl(target, bestMention, cluster, candidateCount)
+} 
+
+trait CorefFullResolvedBestMention extends CorefResolvedBestMention with FullResolvedBestMention
+object CorefFullResolvedBestMention {
+  case class CorefFullResolvedBestMentionImpl(target: Entity, bestEntity: Entity, cluster: MentionCluster, candidateCount: Int) extends CorefFullResolvedBestMention
+  def apply(target: Entity, bestEntity: Entity, cluster: MentionCluster, candidateCount: Int) = 
+    CorefFullResolvedBestMentionImpl(target, bestEntity, cluster, candidateCount)
+} 
+
+case class LinkResolvedBestMention(m: Mention, link: FreeBaseLink, cluster: MentionCluster, candidateCount: Int) extends CorefFullResolvedBestMention {
+  import LinkResolvedBestMention._
+  val bestEntity = Entity(link.text, link.offset, link.name, guessType(link))
+  val target = Entity(m.text, m.offset, m.text, bestEntity.entityType)
+}
+
+object LinkResolvedBestMention {
+  private val locRegex = "location|place|city|country|state|province".r
+  private val orgRegex = "business|corporation|company".r
+  private val perRegex = "people|person".r
+  
+  def guessType(fb: FreeBaseLink): EntityType = {
+    if (fb.types.exists(t => locRegex.findFirstIn(t).isDefined)) Location
+    else if (fb.types.exists(t => orgRegex.findFirstIn(t).isDefined)) Organization
+    else if (fb.types.exists(t => perRegex.findFirstIn(t).isDefined)) Person
+    else Other
+  }
+}
+
+
+
 case class ContainmentBestMention(
-    target: Entity, containedEntity:Entity, containerEntity: Entity) extends ResolvedBestMention {
+    target: Entity, containedEntity:Entity, containerEntity: Entity, candidateCount: Int) extends ResolvedBestMention {
   
   def bestMention = containedEntity.name + ", " + containerEntity.name
 }
 
 case class ContainerBestMention(
-    target: Entity, containerEntity: Entity) extends ResolvedBestMention {
+    target: Entity, containerEntity: Entity, candidateCount: Int) extends ResolvedBestMention {
   
   def bestMention = BestMentionFinderOriginalAlgorithm.locationCasing(text + ", " + containerEntity.name)
 }

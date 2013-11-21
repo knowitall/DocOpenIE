@@ -151,25 +151,17 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
     //if the organization is an acronym
     if (originalString.forall(p => p.isUpper) || accronymRegex.findFirstIn(rawDoc).isDefined) {
 
-      for (cs <- sortedCandidateStrings) {
-        val words = cs.nameWords.filter(p => { p(0).isUpper }).takeRight(originalString.length())
-        if (words.length >= originalString.length()) {
-          val goodCandidate = !words.zipWithIndex.exists { case (word, index) => word(0) != originalString(index) }
-
-          if (goodCandidate) {
-            for ((cw, index) <- cs.nameWords.zipWithIndex) {
-              if (cw == words.head) {
-                // Expand "CDC" to "Centers for Disease Control" by checking acronym caps against head letters in candidate.
-                // Possible features:
-                // -- Proximity
-                // -- Number of possible matches
-                // -- Number of extraneous tokens (e.g. for 'CDC' -> 'U.S. Centers for Disease Control' has 3 extraneous tokens)
-                return FullResolvedBestMention(entity, cs.copy(name = cs.nameWords.drop(index).mkString(" ")))
-              }
-            }
-          }
-        }
+      val acronymMatches = for (
+        cs <- sortedCandidateStrings;
+        words = cs.nameWords.filter(p => { p(0).isUpper }).takeRight(originalString.length());
+        if (words.length >= originalString.length());
+        if (!words.zipWithIndex.exists { case (word, index) => word(0) != originalString(index) });
+        (cw, index) <- cs.nameWords.zipWithIndex;
+        if (cw == words.head)) yield {
+        (entity, cs.copy(name = cs.nameWords.drop(index).mkString(" ")))
       }
+      if (acronymMatches.nonEmpty) return FullResolvedBestMention(acronymMatches.head._1, acronymMatches.head._2, acronymMatches.size)
+     
 
       //        // if in parentheses and nothing was found...
       //        //val parenthesisRegexPattern = new Regex("([A-Z]\\w+ (\\w+ )*[A-Z]\\w+)[\\.\\s]*\\([^\\)\\(]{0,5}"+originalString+"[^\\)\\(]{0,5}\\)")
@@ -204,32 +196,35 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
 
     if (probablyOrganization) {
       //do this if original String is not refferring to a location
-      for (cs <- candidateStrings) {
-        val originalWords = originalString.split(" ")
-        if ((cs.nameWords.length > originalWords.length) &&
-          ((cs.nameWords.takeRight(originalWords.length).mkString(" ") == originalString) ||
-            (cs.nameWords.take(originalWords.length).mkString(" ") == originalString))) {
+      val matches = for (
+        cs <- candidateStrings;
+        originalWords = originalString.split(" ");
+        if ((cs.nameWords.length > originalWords.length) && 
+            ((cs.nameWords.takeRight(originalWords.length).mkString(" ") == originalString) || 
+                (cs.nameWords.take(originalWords.length).mkString(" ") == originalString)))) 
+        yield (entity, cs)
           // Catch cases where a candidate is a word-prefix or suffix (e.g. Centers for Disease Control => U.S. Centers for Disease Control)
           // Features:
           // proximity
           // number of possible matches (if let the whole loop run)
           // left match
           // right match
-          return FullResolvedBestMention(entity, cs)
-        }
-      }
+      if (matches.nonEmpty) 
+        return FullResolvedBestMention(matches.head._1, matches.head._2, matches.size)
     }
 
     // finally check if the original string if prefix of an organization
-    for (cs <- sortedCandidateStrings) {
-      if (cs.name.toLowerCase().startsWith(originalString.toLowerCase()) && cs.name.length() > originalString.length() && cs.nameWords.length == 1) {
+    val matches = for (cs <- sortedCandidateStrings;
+         if (cs.name.toLowerCase().startsWith(originalString.toLowerCase()) && 
+             cs.name.length() > originalString.length() && 
+             cs.nameWords.length == 1))
+      yield (entity, cs)
         // check if original string is a character-prefix of a one-word candidate.
         // Feaures:
         // proximity
         // length disparity (weak)
-        return FullResolvedBestMention(entity, cs)
-      }
-    }
+    if (matches.nonEmpty) 
+        return FullResolvedBestMention(matches.head._1, matches.head._2, matches.size)
 
     IdentityBestMention(entity)
   }
@@ -350,7 +345,7 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
             // size of "candidates" in this scope
             // containment relationship features
             // was abbreviation expanded
-            ContainmentBestMention(entity, containedMap(containerEntity), containerEntity)
+            ContainmentBestMention(entity, containedMap(containerEntity), containerEntity, candidates.size)
           }
           case None =>
             IdentityBestMention(entity)
@@ -359,11 +354,11 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
         //sort by distance to original string
         val containerStrings = containerMap.keys
         val sortedContainerStrings = sortCandidateStringsByProximity(containerStrings.toList, entity.offset)
-        ContainerBestMention(entity, sortedContainerStrings.head)
+        ContainerBestMention(entity, sortedContainerStrings.head, containerStrings.size)
       }
     } else {
       val candidate = candidates.head
-      FullResolvedBestMention(entity, candidate.copy(name = expandAbbreviation(locationCasing(candidate.name))))
+      FullResolvedBestMention(entity, candidate.copy(name = expandAbbreviation(locationCasing(candidate.name))), candidates.size)
     }
   }
   private def findBestPersonString(
@@ -373,13 +368,13 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
     probablyPerson: Boolean): ResolvedBestMention = {
 
     val originalString = entity.cleanText
-    for (cs <- sortCandidateStringsByProximity(candidateStrings, entity.offset)) {
-      val words = cs.nameWords
-      val originalWords = originalString.split(" ")
-      if ((words.length > originalWords.length) &&
-        ((words.takeRight(originalWords.length).mkString(" ") == originalString) ||
-          (words.take(originalWords.length).mkString(" ") == originalString)) &&
-          (words.length < 4)) {
+    val matches = for (cs <- sortCandidateStringsByProximity(candidateStrings, entity.offset);
+         words = cs.nameWords;
+         originalWords = originalString.split(" ");
+         if ((words.length > originalWords.length) &&
+            ((words.takeRight(originalWords.length).mkString(" ") == originalString) ||
+              (words.take(originalWords.length).mkString(" ") == originalString)) &&
+              (words.length < 4))) yield {
         // if 'Peterson' -> 'Scott Peterson' or 'Scott' -> 'Scott Peterson', return
         // the first case like this that we find.
         // TODO: collect all hits and decide what to do from there (e.g. bail if conflicts, or maybe return them all and let ranker sort them out?)
@@ -389,9 +384,9 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
         // -- Prefix match (e.g. 'Scott' -> 'Scott Peterson')
         // -- words.length - originalWords.length (would this be useful?)
         // -- number of candidates that make it through this filter at any proximity
-        return FullResolvedBestMention(entity, cs)
-      }
+        (entity, cs)
     }
+    if (matches.nonEmpty) return FullResolvedBestMention(matches.head._1, matches.head._2, matches.size)
 
     // Instead of using candidateStrings (stanford NER),
     // use a regex to search for noncap Cap Cap noncap strings
@@ -410,9 +405,9 @@ class BestMentionFinderOriginalAlgorithm extends bestMentionFinder {
         name = nameMatch.group(3);
         if (JaroWinklerMetric.compare(name, originalString).getOrElse(0.0) > 0.8)
       ) yield Entity(name, nameMatch.start(3), name, Location)
-      if (nameList.headOption.isDefined) {
+      if (nameList.nonEmpty) {
         val sortedNameList = sortCandidateStringsByProximity(nameList, entity.offset)
-        return FullResolvedBestMention(entity, sortedNameList.head)
+        return FullResolvedBestMention(entity, sortedNameList.head, nameList.size)
       }
     }
 

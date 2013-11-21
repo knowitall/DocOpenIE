@@ -31,7 +31,9 @@ object BestMentionFeatures extends FeatureSet[ResolvedBestMention, Double] {
   val typeFeatures = List(
     BMFeature("is ContainmentBestMention", toDouble(_.isInstanceOf[ContainmentBestMention])),
     BMFeature("is ContainerBestMention", toDouble(_.isInstanceOf[ContainerBestMention])),
-    BMFeature("is CorefResolvedBestMention", toDouble(_.isInstanceOf[CorefResolvedBestMention]))
+    BMFeature("is CorefResolvedBestMention", toDouble(_.isInstanceOf[CorefResolvedBestMention])),
+    BMFeature("is FullResolvedBestMention", toDouble(_.isInstanceOf[FullResolvedBestMention])),
+    BMFeature("is LinkResolvedBestMention", toDouble(_.isInstanceOf[LinkResolvedBestMention]))
   )
 
 
@@ -81,7 +83,7 @@ object BestMentionHelper {
   }
   
   private def docContext(offset: Int, doc: RBMDoc) = {
-    doc.text.drop(offset - 40).take(40).replaceAll("\\s", " ")
+    doc.text.drop(offset - 40).take(80).replaceAll("\\s", " ")
   }
   
   

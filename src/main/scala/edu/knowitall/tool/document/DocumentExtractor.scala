@@ -135,23 +135,25 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
     bestMentionsInCluster.groupBy(f => f.bestMention).values.map(f => f.head).toSeq
   }
 
-  def makeNewbestMentionsForPronounsInCluster(cluster: MentionCluster, best: Entity) = {
+  def newCorefMentions(cluster: MentionCluster, bestMention: ResolvedBestMention) = {
     for(m <- cluster.mentions; if m.isPronoun) yield {
-      val target = Entity(m.text,m.offset,m.text, best.entityType)
-      CorefResolvedBestMention(target, best)
+      val target = Entity(m.text,m.offset,m.text, bestMention.target.entityType)
+      if (bestMention.isInstanceOf[FullResolvedBestMention]) {
+        val fbm = bestMention.asInstanceOf[FullResolvedBestMention]
+        CorefFullResolvedBestMention(target, fbm.bestEntity, cluster, bestMention.candidateCount)
+      } else {
+        CorefResolvedBestMention(target, bestMention.bestMention, cluster, bestMention.candidateCount)
+      }
     }
   }
   
-  private val locRegex = "location|place|city|country|state|province".r
-  private val orgRegex = "business|corporation|company".r
-  private val perRegex = "people|person".r
-  
-  def guessType(fb: FreeBaseLink): EntityType = {
-    if (fb.types.exists(t => locRegex.findFirstIn(t).isDefined)) Location
-    else if (fb.types.exists(t => orgRegex.findFirstIn(t).isDefined)) Organization
-    else if (fb.types.exists(t => perRegex.findFirstIn(t).isDefined)) Person
-    else Other
+  def newLinkMentions(cluster: MentionCluster, link: FreeBaseLink) = {
+    for(m <- cluster.mentions; if m.isPronoun) yield {
+      LinkResolvedBestMention(m, link, cluster, 1)
+    }
   }
+  
+
 
   def extract(d: InputDoc): OutputDoc = {
 
@@ -180,7 +182,7 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
       val mentions = cluster.mentions
       val links = getUniqueLinksInCluster(cluster,doc.links)
       val bestMentions = getUniquebestMentionsInCluster(cluster, doc.bestMentions)
-      var best: Option[Entity] = None
+      var best: Option[CorefResolvedBestMention] = None
       if(debug){
 	      println("Cluster number " + clusterIndex)
 	      println("Mentions: ")
@@ -197,13 +199,11 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
 	      }
       }
       if(links.length ==1)  {
-        best = Some(Entity(links.head.text, links.head.offset, links.head.name, guessType(links.head)))
+        val newbestMentions = newLinkMentions(cluster,links.head)
+        corefExpandedbestMentions = corefExpandedbestMentions ++ newbestMentions
       }
       else if(bestMentions.length ==1) {
-        best = Some(bestMentions.head.target)
-      }
-      if(best.isDefined){
-        val newbestMentions = makeNewbestMentionsForPronounsInCluster(cluster,best.get)
+        val newbestMentions = newCorefMentions(cluster, bestMentions.head)
         corefExpandedbestMentions = corefExpandedbestMentions ++ newbestMentions
       }
       clusterIndex += 1
