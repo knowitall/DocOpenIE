@@ -22,6 +22,7 @@ object ResolvedBestMentionWriter {
     val docs = docsDir.listFiles.toSeq.map { f => FullDocSerializer.deserializeFromFile(f) }
     
     using(new java.io.PrintStream(outfile)) { out =>
+      out.println(featureHeaders.mkString("\t"))
       for (doc <- docs;
            line <- writeAll(doc)) {
         out.println(line)
@@ -37,9 +38,19 @@ object ResolvedBestMentionWriter {
     }
   }
   
+  val featureHeaders = Seq(
+    "label",
+    "target text",
+    "best text",
+    "target context",
+    "best context") ++ BestMentionFeatures.featureNames() ++ Seq(
+      "doc bem index",    
+      "doc id"
+    )
+  
   private def writeRBM(index: Int, rbm: ResolvedBestMention, doc: RBMDoc): String = {
     
-    def noTabs(s: String) = s.replaceAll("\t", " ")
+    def noTabs(s: String) = s.replaceAll("\t", " ").replaceAll("\n", " ")
     
     def twoPlaces(d: Double) = "%.02f" format d
     
