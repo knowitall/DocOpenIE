@@ -57,7 +57,7 @@ object ResolvedBestMentionWriter {
   }
   
   private def docContext(offset: Int, doc: RBMDoc) = {
-    doc.text.drop(offset - 40).take(offset + 40).replaceAll("\\s", " ")
+    doc.text.drop(offset - 40).take(40).replaceAll("\\s", " ")
   }
   
   private def getBestContext(rbm: ResolvedBestMention, doc: RBMDoc): String = {
