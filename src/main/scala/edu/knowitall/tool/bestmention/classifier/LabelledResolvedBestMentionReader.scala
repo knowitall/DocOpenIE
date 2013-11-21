@@ -18,10 +18,14 @@ case class LabelledResolvedBestMentionReader(trainingFile: File, docsPath: File)
   // a list of (label, doc Index, doc Id)
   val labelIndexId = using(io.Source.fromFile(trainingFile)) { trainingSource =>
     trainingSource.getLines
+    .drop(1)
     .map(_.split("\t"))
     .filter(_.length > 3)
     .map(s => (s(0), s(s.length-2), s(s.length-1)))
-    .map({case (labelStr, indexStr, docIdStr) => (labelStr == "1", indexStr.toInt, docIdStr) })
+    .collect({
+       case ("1", indexStr, docIdStr) => (true, indexStr.toInt, docIdStr) 
+       case ("0", indexStr, docIdStr) => (false, indexStr.toInt, docIdStr)
+    })
     .toList
   }
 

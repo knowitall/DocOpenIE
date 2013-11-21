@@ -175,10 +175,10 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
       val NERAnnotatedDoc = linkedDoc.NERAnnotatedDoc
       val bestMentionFinder = bestMentionFinderAlgorithm
       override lazy val namedEntityCollection = {
-        lazy val linkEntities = links.map(LinkResolvedBestMention.linkEntity)
-        lazy val organizations = getListOfNERType(Organization) ++ linkEntities.filter(_.entityType == Organization)
-        lazy val locations = getListOfNERType(Location) ++ linkEntities.filter(_.entityType == Location)
-        lazy val people = getListOfNERType(Person) ++ linkEntities.filter(_.entityType == Person)
+        val linkEntities = links.map(LinkResolvedBestMention.linkEntity)
+        val organizations = getListOfNERType(Organization) ++ linkEntities.filter(_.entityType == Organization)
+        val locations = getListOfNERType(Location) ++ linkEntities.filter(_.entityType == Location)
+        val people = getListOfNERType(Person) ++ linkEntities.filter(_.entityType == Person)
         NamedEntityCollection(organizations, locations, people)
       }
     }
