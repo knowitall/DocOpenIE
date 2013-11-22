@@ -404,7 +404,7 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
         nameMatch <- nameRegex.findAllMatchIn(rawDoc).toList;
         name = nameMatch.group(3);
         if (name.contains(originalString))
-      ) yield Entity(name, nameMatch.start(3), name, Location)
+      ) yield Entity(name, nameMatch.start(3), name, Person)
       if (nameList.nonEmpty) {
         val sortedNameList = sortCandidateStringsByProximity(nameList, entity.offset)
         return FullResolvedBestMention(entity, sortedNameList.head, nameList.size)
