@@ -47,7 +47,7 @@ object ParsedKbpSentence {
   def read(split: Seq[String]): Option[ParsedKbpSentence] = {
     split match {
       case Seq(docId, sentNum, startOffset, chunks, dgraph, _*) =>
-        Some(new ParsedKbpSentence(docId, sentNum.toInt, startOffset.toInt, wsSplit.split(chunks), DependencyGraph.deserialize(dgraph)))
+        Some(new ParsedKbpSentence(docId, sentNum.toInt, startOffset.toInt, wsSplit.split(chunks), DependencyGraph.stringFormat.read(dgraph)))
       case _ => {
         System.err.println("Error reading ParsedKbpSentence: %s".format(split.mkString("\t")))
         None
@@ -61,7 +61,7 @@ object ParsedKbpSentence {
       s.sentNum.toString,
       s.startOffset.toString,
       s.chunks.mkString(" "),
-      s.dgraph.serialize
+      DependencyGraph.stringFormat.write(s.dgraph)
     ).map(_.replaceAll("\t", " ")).mkString("\t")
   }
 }

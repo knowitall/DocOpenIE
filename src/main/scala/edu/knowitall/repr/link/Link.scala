@@ -21,15 +21,15 @@ trait Link extends Tag {
 
 trait FreeBaseLink extends Link {
   def id: String
-  def types: Seq[String]
+  def types: List[String]
   def docSimScore: Double
   def candidateScore: Double
   def inlinks: Double
 }
 
 object FreeBaseLink {
-  case class FreeBaseLinkImpl(text: String, offset: Int, name: String, score: Double, docSimScore: Double, candidateScore: Double, inlinks: Double, id: String, types: Seq[String]) extends FreeBaseLink
-  def apply(text: String, offset: Int, name: String, score: Double, docSimScore: Double, candidateScore: Double, inlinks: Double, id: String, types: Seq[String]) = FreeBaseLinkImpl(text, offset, name, score, docSimScore, candidateScore, inlinks, id, types)
+  case class FreeBaseLinkImpl(text: String, offset: Int, name: String, score: Double, docSimScore: Double, candidateScore: Double, inlinks: Double, id: String, types: List[String]) extends FreeBaseLink
+  def apply(text: String, offset: Int, name: String, score: Double, docSimScore: Double, candidateScore: Double, inlinks: Double, id: String, types: Seq[String]) = FreeBaseLinkImpl(text, offset, name, score, docSimScore, candidateScore, inlinks, id, types.toList)
 }
 
 trait LinkedDocument {

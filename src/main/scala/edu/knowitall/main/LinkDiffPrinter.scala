@@ -2,11 +2,14 @@ package edu.knowitall.main
 
 import edu.knowitall.repr.sentence.Sentence
 import edu.knowitall.repr.document.Document
+import edu.knowitall.repr.document.DocumentParser
 import edu.knowitall.repr.document.Sentenced
+import edu.knowitall.repr.document.DocId
 import edu.knowitall.tool.coref.Mention
 import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.repr.link.FreeBaseLink
 import edu.knowitall.repr.link.Link
+import edu.knowitall.repr.document.KbpDocumentSentencer
 import edu.knowitall.tool.document.OpenIEBaselineExtractor
 import edu.knowitall.tool.document.OpenIEDocumentExtractor
 import edu.knowitall.tool.document.OpenIENoCorefDocumentExtractor
@@ -14,18 +17,17 @@ import edu.knowitall.tool.document.OpenIECorefExpandedDocumentExtractor
 
 object LinkDiffPrinter extends App {
 
-  import DocOpenIEMain.loadSentencedDocs
+  val sentencedDocuments = KbpDocumentSentencer.loadSentencedDocs(args(0))
 
-  val sentencedDocuments = loadSentencedDocs(args(0))
-
+  val parsedDocuments = sentencedDocuments.map(DocumentParser.defaultInstance.parse)
+  
   val baseline = new OpenIEBaselineExtractor()
-  val rules = new OpenIEDocumentExtractor()
-  val coref = new OpenIENoCorefDocumentExtractor()
-
-
-  val baselineExtracted = sentencedDocuments.map(kd => kd.copy(doc=baseline.extract(kd.doc)))
-  val rulesExtracted = sentencedDocuments.map(kd => kd.copy(doc=rules.extract(kd.doc)))
-  val corefExtracted = sentencedDocuments.map(kd => kd.copy(doc=coref.extract(kd.doc)))
+  val rules = new OpenIENoCorefDocumentExtractor()
+  val coref = new OpenIECorefExpandedDocumentExtractor()
+  
+  val baselineExtracted = parsedDocuments.map(baseline.extract)
+  val rulesExtracted = parsedDocuments.map(rules.extract)
+  val corefExtracted = parsedDocuments.map(coref.extract)
 
   val zippedDocs = baselineExtracted.zip(rulesExtracted).zip(corefExtracted)
 
@@ -44,7 +46,7 @@ object LinkDiffPrinter extends App {
 
 class LinkDiffPrinter(out: java.io.PrintStream) {
 
-  type LKBPDoc = KbpDocument[_ <: Document with Sentenced[_ <: Sentence] with OpenIELinked]
+  type LKBPDoc = Document with Sentenced[_ <: Sentence] with OpenIELinked with DocId
 
   // links are distinct given an offset, the text they linked to, and their link ID.
   private def linkKey(l: FreeBaseLink) = (l.offset, l.text, l.id)
@@ -53,8 +55,8 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
 
     require(oldDoc.docId.equals(newDoc.docId), "Link diff should be for the same doc.")
 
-    val oldLinks = oldDoc.doc.links.map(l => (linkKey(l), l)).toMap
-    val newLinks = newDoc.doc.links.map(l => (linkKey(l), l)).toMap
+    val oldLinks = oldDoc.links.map(l => (linkKey(l), l)).toMap
+    val newLinks = newDoc.links.map(l => (linkKey(l), l)).toMap
 
     val oldDiff = (oldLinks -- newLinks.keys).toSeq
     val newDiff = (newLinks -- oldLinks.keys).toSeq
@@ -71,7 +73,7 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
   }
 
   def printAll(runName: String, doc: LKBPDoc): Unit = {
-    doc.doc.links foreach { link =>
+    doc.links foreach { link =>
       out.println(linkString(runName, link, doc))
     }
   }
@@ -81,20 +83,20 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
 
   def linkString(name: String, link: FreeBaseLink, kbpDoc: LKBPDoc): String = {
 
-    val argContexts = kbpDoc.doc.argContexts.toSeq.filter { case (arg, _, ctxt) =>
-      val chStartMatch = link.offset == arg.offset + ctxt.source.offset
-      val chEndMatch = link.offset + link.text.length == arg.offset + ctxt.source.offset + arg.text.length
-      val textMatch = link.text == arg.text
+    val argContexts = kbpDoc.argContexts.toSeq.filter { ac =>
+      val chStartMatch = link.offset == ac.arg.offset + ac.source.offset
+      val chEndMatch = link.offset + link.text.length == ac.arg.offset + ac.source.offset + ac.arg.text.length
+      val textMatch = link.text == ac.arg.text
       chStartMatch && chEndMatch && textMatch
     }
     require(argContexts.size == 1, s"${argContexts.size} links found, expected one.")
 
     val context = argContexts.headOption
 
-    val contextString = context.map(_._3.fullText.mkString("[", ", ", "]")).getOrElse("CONTEXT NOT FOUND")
+    val contextString = context.map(_.fullText.mkString("[", ", ", "]")).getOrElse("CONTEXT NOT FOUND")
 
-    val contextMentions = context.map { case (_, _, ctxt) =>
-      val clusters = ctxt.clusters
+    val contextMentions = context.map { ac =>
+      val clusters = ac.clusters
       val texts = clusters.map { c =>
         c.mentions.map { case m: Mention =>
           s"(${m.offset}) ${m.text}"
@@ -102,8 +104,8 @@ class LinkDiffPrinter(out: java.io.PrintStream) {
       }
       texts.mkString("[", "] [", "]")
     }.getOrElse("[]")
-    val contextSize = context.map(_._3.size).getOrElse(0)
-    val cleanString = context.map(_._2).getOrElse("NA")
+    val contextSize = context.map(_.size).getOrElse(0)
+    val cleanString = context.map(_.cleanArg).getOrElse("NA")
     val fields = Seq(name) ++ linkFields(link, cleanString) ++ Seq(contextMentions, contextSize.toString, contextString, kbpDoc.docId)
     fields.map(EvaluationPrinter.clean).mkString("\t")
   }

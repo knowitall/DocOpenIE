@@ -1,6 +1,7 @@
 package edu.knowitall.main
 
 import edu.knowitall.repr.document.Document
+import edu.knowitall.repr.document.DocId
 import edu.knowitall.repr.document.DocumentSentence
 import edu.knowitall.repr.document.Sentenced
 import edu.knowitall.repr.sentence.Sentence
@@ -12,18 +13,16 @@ import edu.knowitall.repr.link.Link
 import edu.knowitall.tool.sentence.OpenIEExtracted
 import edu.knowitall.tool.link.OpenIELinked
 import edu.knowitall.tool.coref.Mention
-import edu.knowitall.tool.bestentitymention.BestEntityMentionsFound
+import edu.knowitall.repr.bestmention.BestMentionResolvedDocument
 
 /**
  * Code for producing human readable sample output.
  */
 class KbpDocPrinter(out: java.io.PrintStream) {
 
-  def print(kbpDoc: KbpDocument[Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestEntityMentionsFound ]): Unit = {
+  def print(doc: Document with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with BestMentionResolvedDocument with DocId): Unit = {
 
-    val KbpDocument(doc, docId) = kbpDoc
-
-    out.println(docId)
+    out.println(doc.docId)
     out.println("Number of sentences: " + doc.sentences.size)
     out.println("Number of extractions: " + doc.sentences.flatMap(_.sentence.extractions).size)
     out.println("Number of FreeBase links: " + doc.links.size)
@@ -41,9 +40,9 @@ class KbpDocPrinter(out: java.io.PrintStream) {
     printEntityMentions(doc)
   }
 
-  def printEntityMentions(doc: Document with BestEntityMentionsFound): Unit = {
-    for( bme <-doc.bestEntityMentions){
-      out.println(bme.offset + "\t" + bme.text + "\t" + bme.bestEntityMention)
+  def printEntityMentions(doc: Document with BestMentionResolvedDocument): Unit = {
+    for( bme <-doc.bestMentions){
+      out.println(bme.offset + "\t" + bme.text + "\t" + bme.bestMention)
     }
   }
 
@@ -96,3 +95,17 @@ class KbpDocPrinter(out: java.io.PrintStream) {
     docSentence.sentence.tokens(part.tokenIndices.head).offset + docSentence.offset
   }
 }
+
+object KbpDocPrinter extends App {
+  
+  import java.io.File
+  
+  val extractedDocuments = new File(args(0)).listFiles.map(FullDocSerializer.deserializeFromFile)
+  
+  val docPrinter = new KbpDocPrinter(System.out)
+     
+  extractedDocuments foreach docPrinter.print
+  
+}
+
+
