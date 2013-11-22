@@ -407,7 +407,7 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
       ) yield Entity(name, nameMatch.start(3), name, Person)
       if (nameList.nonEmpty) {
         val sortedNameList = sortCandidateStringsByProximity(nameList, entity.offset)
-        return FullResolvedBestMention(entity, sortedNameList.head, nameList.size)
+        return FullResolvedBestMention(entity, sortedNameList.head, distinctNameCount(nameList))
       }
     }
 
