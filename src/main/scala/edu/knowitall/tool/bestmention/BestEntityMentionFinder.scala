@@ -428,16 +428,11 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
     val stateOrProvinces = BestMentionFinderOriginalAlgorithm.TipsterData.stateOrProvinces
     val countries = BestMentionFinderOriginalAlgorithm.TipsterData.countries
 
-    if (cities.contains(location1.toLowerCase()) && cities.contains(location2.toLowerCase())) {
-      return true
-    }
-    if (stateOrProvinces.contains(location1.toLowerCase()) && stateOrProvinces.contains(location2.toLowerCase())) {
-      return true
-    }
-    if (countries.contains(location1.toLowerCase()) && countries.contains(location2.toLowerCase())) {
-      return true
-    }
-    return false
+    val l1lc = location1.toLowerCase()
+    val l2lc = location2.toLowerCase()
+
+    Seq(cities, stateOrProvinces, countries)
+    .exists(set => set.contains(l1lc) && set.contains(l2lc))
   }
 }
 
