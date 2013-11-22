@@ -94,18 +94,18 @@ object BestMentionHelper {
   type RBMDoc = Document with Sentenced[_ <: Sentence] with BestMentionResolvedDocument with DocId
   
   def bothStates(rbm: ContainerBestMention): Boolean = {
-    TipsterData.stateOrProvinces.contains(rbm.containerEntity.cleanText) &&
-    TipsterData.stateOrProvinces.contains(rbm.target.cleanText)
+    TipsterData.stateOrProvinces.contains(rbm.containerEntity.cleanText.toLowerCase) &&
+    TipsterData.stateOrProvinces.contains(rbm.target.cleanText.toLowerCase)
   }
   
   def stateContainsCity(rbm: ContainerBestMention): Boolean = { 
-    TipsterData.cities.contains(rbm.target.cleanText) &&
-    TipsterData.stateOrProvinces.contains(rbm.containerEntity.cleanText)
+    TipsterData.cities.contains(rbm.target.cleanText.toLowerCase) &&
+    TipsterData.stateOrProvinces.contains(rbm.containerEntity.cleanText.toLowerCase)
   }
   
   def countryContainsCity(rbm: ContainerBestMention): Boolean = { 
-    TipsterData.cities.contains(rbm.target.cleanText) &&
-    TipsterData.countries.contains(rbm.containerEntity.cleanText)
+    TipsterData.cities.contains(rbm.target.cleanText.toLowerCase) &&
+    TipsterData.countries.contains(rbm.containerEntity.cleanText.toLowerCase)
   }
   
   def context(offset: Int, doc: RBMDoc): String = {
