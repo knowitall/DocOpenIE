@@ -384,9 +384,9 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
         // -- Prefix match (e.g. 'Scott' -> 'Scott Peterson')
         // -- words.length - originalWords.length (would this be useful?)
         // -- number of candidates that make it through this filter at any proximity
-        (entity, cs)
+        cs
     }
-    if (matches.nonEmpty) return FullResolvedBestMention(matches.head._1, matches.head._2, matches.size)
+    if (matches.nonEmpty) return FullResolvedBestMention(entity, matches.head, distinctNameCount(matches))
 
     // Instead of using candidateStrings (stanford NER),
     // use a regex to search for noncap Cap Cap noncap strings

@@ -57,15 +57,19 @@ object BestMentionFeatures extends FeatureSet[ResolvedBestMention, Double] {
     BMFeature("StateOrProvince contains City", toDouble { bem =>
       if (bem.isInstanceOf[ContainerBestMention]) {
         val cbm = bem.asInstanceOf[ContainerBestMention]
-        cbm.target.entityType == Location &&
         stateContainsCity(cbm)
       } else false
     }),
     BMFeature("Country Contains City", toDouble { bem =>
       if (bem.isInstanceOf[ContainerBestMention]) {
         val cbm = bem.asInstanceOf[ContainerBestMention]
-        cbm.target.entityType == Location &&
-        stateContainsCity(cbm)
+        countryContainsCity(cbm)
+      } else false
+    }),
+    BMFeature("Target and Best are Both States", toDouble { bem =>
+      if (bem.isInstanceOf[ContainerBestMention]) {
+        val cbm = bem.asInstanceOf[ContainerBestMention]
+        bothStates(cbm)
       } else false
     })
   )
@@ -89,14 +93,19 @@ object BestMentionHelper {
   // a document that a resolved-best-mention might come from... hence R.B.M. Doc
   type RBMDoc = Document with Sentenced[_ <: Sentence] with BestMentionResolvedDocument with DocId
   
+  def bothStates(rbm: ContainerBestMention): Boolean = {
+    TipsterData.stateOrProvinces.contains(rbm.containerEntity.cleanText) &&
+    TipsterData.stateOrProvinces.contains(rbm.target.cleanText)
+  }
+  
   def stateContainsCity(rbm: ContainerBestMention): Boolean = { 
-    TipsterData.cities.contains(rbm.target.name) &&
-    TipsterData.stateOrProvinces.contains(rbm.containerEntity.name)
+    TipsterData.cities.contains(rbm.target.cleanText) &&
+    TipsterData.stateOrProvinces.contains(rbm.containerEntity.cleanText)
   }
   
   def countryContainsCity(rbm: ContainerBestMention): Boolean = { 
-    TipsterData.cities.contains(rbm.target.name) &&
-    TipsterData.countries.contains(rbm.containerEntity.name)
+    TipsterData.cities.contains(rbm.target.cleanText) &&
+    TipsterData.countries.contains(rbm.containerEntity.cleanText)
   }
   
   def context(offset: Int, doc: RBMDoc): String = {
