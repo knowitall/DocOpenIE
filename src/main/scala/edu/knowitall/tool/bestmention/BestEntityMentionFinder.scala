@@ -403,7 +403,7 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
       val nameList = for (
         nameMatch <- nameRegex.findAllMatchIn(rawDoc).toList;
         name = nameMatch.group(3);
-        if (JaroWinklerMetric.compare(name, originalString).getOrElse(0.0) > 0.8)
+        if (name.contains(originalString))
       ) yield Entity(name, nameMatch.start(3), name, Location)
       if (nameList.nonEmpty) {
         val sortedNameList = sortCandidateStringsByProximity(nameList, entity.offset)
