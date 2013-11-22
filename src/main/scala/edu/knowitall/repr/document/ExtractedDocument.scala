@@ -40,15 +40,15 @@ case class ExtractedDocument(
   override val bestMentions: List[ResolvedBestMention],
   val docId: String)
 extends Document(text)
-  with OpenIELinked 
-  with CorefResolved 
-  with Sentenced[Sentence with OpenIEExtracted] 
-  with StanfordSerializableNERAnnotated 
-  with BestMentionResolvedDocument 
+  with OpenIELinked
+  with CorefResolved
+  with Sentenced[Sentence with OpenIEExtracted]
+  with StanfordSerializableNERAnnotated
+  with BestMentionResolvedDocument
   with DocId {
-  
+
   override type B = ResolvedBestMention
-  
+
   override def sentences = sentencesList.toStream
 }
 

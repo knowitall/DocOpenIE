@@ -9,16 +9,9 @@ import edu.knowitall.repr.bestmention.ResolvedBestMention
 import weka.classifiers.AbstractClassifier
 
 object BestMentionClassifier {
-  
-  var useBreeze = true
-  
-  val wekaBestMentionTrainer = new WekaLogisticTrainer(BestMentionFeatures) 
+
+  val wekaBestMentionTrainer = new WekaLogisticTrainer(BestMentionFeatures)
   val breezeBestMentionTrainer = new BreezeLogisticRegressionTrainer(BestMentionFeatures)
-  
-  def apply(training: Iterable[Labelled[ResolvedBestMention]]) = {
-    if (useBreeze)
-      breezeBestMentionTrainer.train(training)
-    else 
-      wekaBestMentionTrainer.train(training)
-  }
+
+  def apply(training: Iterable[Labelled[ResolvedBestMention]]) = breezeBestMentionTrainer.train(training)
 }

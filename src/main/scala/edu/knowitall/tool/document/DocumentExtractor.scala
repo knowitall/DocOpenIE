@@ -73,17 +73,18 @@ class OpenIENoCorefDocumentExtractor extends OpenIEDocumentExtractor {
 
   import OpenIEDocumentExtractor._
 
-  type InputDoc = Document with Sentenced[BaseSentence] with StanfordNERAnnotated with DocId
-  type OutputDoc = Document with OpenIELinked with Sentenced[Sentence with OpenIEExtracted] with BestMentionsFound with DocId
+  type InputDoc = Document with Sentenced[BaseSentence] with StanfordNERAnnotated with CorefResolved with DocId
+  type OutputDoc = Document with OpenIELinked with Sentenced[Sentence with OpenIEExtracted] with BestMentionResolvedDocument with StanfordNERAnnotated with CorefResolved with DocId
 
   override def extract(d: InputDoc): OutputDoc = {
 
-    new Document(d.text) with OpenIELinker with Sentenced[Sentence with OpenIEExtracted] with BestMentionsFound with StanfordNERAnnotated with DocId {
+    new Document(d.text) with OpenIELinker with Sentenced[Sentence with OpenIEExtracted] with BestMentionsFound with StanfordNERAnnotated with CorefResolved with DocId {
       val sentences = d.sentences
       val linker = entityLinker
       val NERAnnotatedDoc = d.NERAnnotatedDoc
       val bestMentionFinder = bestMentionFinderAlgorithm
       val docId = d.docId
+      val clusters = Nil
     }
   }
 }
@@ -147,13 +148,13 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
       }
     }
   }
-  
+
   def newLinkMentions(cluster: MentionCluster, link: FreeBaseLink) = {
     for(m <- cluster.mentions; if m.isPronoun) yield {
       LinkResolvedBestMention(m, link, cluster, 1)
     }
   }
-  
+
 
 
   def extract(d: InputDoc): OutputDoc = {
@@ -165,7 +166,7 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
       val linker = entityLinker
       val NERAnnotatedDoc = d.NERAnnotatedDoc
     }
-    
+
     val doc  = new Document(d.text) with OpenIELinked with CorefResolved with Sentenced[Sentence with OpenIEExtracted] with StanfordNERAnnotated with BestMentionsFound {
       type M = Mention
       val clusters = linkedDoc.clusters

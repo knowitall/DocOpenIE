@@ -23,8 +23,8 @@ import com.rockymadden.stringmetric.similarity.JaroWinklerMetric
 trait BestMentionFinder {
 
   def findBestEntity(
-      entity: Entity, 
-      docText: String, 
+      entity: Entity,
+      docText: String,
       namedEntityCollection: NamedEntityCollection): Option[ResolvedBestMention]
 }
 
@@ -98,9 +98,9 @@ trait BestMentionsFound extends BestMentionResolvedDocument {
 }
 
 class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
-  
+
   import BestMentionFinderOriginalAlgorithm._
-  
+
   println("Instantiating new BestMentionFinderOriginalAlgorithm object")
   //where the custom rules should go
   override def findBestEntity(entity: Entity, docText: String, namedEntityCollection: NamedEntityCollection): Option[ResolvedBestMention] = {
@@ -161,7 +161,7 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
         cs.copy(name = cs.nameWords.drop(index).mkString(" "))
       }
       if (acronymMatches.nonEmpty) return FullResolvedBestMention(entity, acronymMatches.head, distinctNameCount(acronymMatches))
-     
+
 
       //        // if in parentheses and nothing was found...
       //        //val parenthesisRegexPattern = new Regex("([A-Z]\\w+ (\\w+ )*[A-Z]\\w+)[\\.\\s]*\\([^\\)\\(]{0,5}"+originalString+"[^\\)\\(]{0,5}\\)")
@@ -199,9 +199,9 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
       val matches = for (
         cs <- candidateStrings;
         originalWords = originalString.split(" ");
-        if ((cs.nameWords.length > originalWords.length) && 
-            ((cs.nameWords.takeRight(originalWords.length).mkString(" ") == originalString) || 
-                (cs.nameWords.take(originalWords.length).mkString(" ") == originalString)))) 
+        if ((cs.nameWords.length > originalWords.length) &&
+            ((cs.nameWords.takeRight(originalWords.length).mkString(" ") == originalString) ||
+                (cs.nameWords.take(originalWords.length).mkString(" ") == originalString))))
         yield cs
           // Catch cases where a candidate is a word-prefix or suffix (e.g. Centers for Disease Control => U.S. Centers for Disease Control)
           // Features:
@@ -209,21 +209,21 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
           // number of possible matches (if let the whole loop run)
           // left match
           // right match
-      if (matches.nonEmpty) 
+      if (matches.nonEmpty)
         return FullResolvedBestMention(entity, matches.head, distinctNameCount(matches))
     }
 
     // finally check if the original string if prefix of an organization
     val matches = for (cs <- sortedCandidateStrings;
-         if (cs.name.toLowerCase().startsWith(originalString.toLowerCase()) && 
-             cs.name.length() > originalString.length() && 
+         if (cs.name.toLowerCase().startsWith(originalString.toLowerCase()) &&
+             cs.name.length() > originalString.length() &&
              cs.nameWords.length == 1))
       yield cs
         // check if original string is a character-prefix of a one-word candidate.
         // Feaures:
         // proximity
         // length disparity (weak)
-    if (matches.nonEmpty) 
+    if (matches.nonEmpty)
         return FullResolvedBestMention(entity, matches.head, distinctNameCount(matches))
 
     IdentityBestMention(entity)
@@ -442,9 +442,9 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
 }
 
 object BestMentionFinderOriginalAlgorithm {
-  
+
   def distinctNameCount(entities: Seq[Entity]): Int = entities.map(_.name).distinct.size
-  
+
   def locationContainsLocation(container: String, contained: String): Boolean = {
     val cities = BestMentionFinderOriginalAlgorithm.TipsterData.cities
     val stateOrProvinces = BestMentionFinderOriginalAlgorithm.TipsterData.stateOrProvinces
@@ -472,7 +472,7 @@ object BestMentionFinderOriginalAlgorithm {
     }
     return false
   }
-  
+
   def locationCasing(str: String): String = {
     var words = List[String]()
     for (s <- str.split(" ")) {
@@ -487,7 +487,7 @@ object BestMentionFinderOriginalAlgorithm {
     }
     words mkString " "
   }
-  
+
   private object AbbreviationData {
 
     val abbreviationMap =
@@ -554,9 +554,9 @@ object BestMentionFinderOriginalAlgorithm {
     private val cityProvincePattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(PROVINCE.*""".r
     private val cityCountryPattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(COUNTRY.*""".r
 
-    val citySet = scala.collection.mutable.Set[String]()
-    val stateOrProvinceSet = scala.collection.mutable.Set[String]()
-    val countrySet = scala.collection.mutable.Set[String]()
+    var cityList = List[String]()
+    var stateOrProvinceList = List[String]()
+    var countryList = List[String]()
 
     val provinceCityMap = scala.collection.mutable.Map[String, Set[String]]()
     val countryCityMap = scala.collection.mutable.Map[String, Set[String]]()
@@ -597,19 +597,13 @@ object BestMentionFinderOriginalAlgorithm {
           val locationType = nameAndLocationType(1).split(" ")(0).trim()
           locationType match {
             case "CITY" => {
-              if (!citySet.contains(name)) {
-                citySet.add(name)
-              }
+              cityList ::= name
             }
             case "COUNTRY" => {
-              if (!countrySet.contains(name)) {
-                countrySet.add(name)
-              }
+              countryList ::= name
             }
             case "PROVINCE" => {
-              if (!stateOrProvinceSet.contains(name)) {
-                stateOrProvinceSet.add(name)
-              }
+              stateOrProvinceList ::= name
             }
             case _ => {}
           }
@@ -619,9 +613,15 @@ object BestMentionFinderOriginalAlgorithm {
     })
 
     lazy val provinceToCityMap = provinceCityMap.toMap
-    lazy val cities = citySet.toSet
-    lazy val countries = countrySet.toSet
-    lazy val stateOrProvinces = stateOrProvinceSet.toSet
+    lazy val cities = cityList.distinct.toSet
+    lazy val countries = countryList.distinct.toSet
+    lazy val stateOrProvinces = stateOrProvinceList.distinct.toSet
+
+    lazy val cityCounts = cityList.groupBy(identity).map(p => (p._1, p._2.size))
+    lazy val countryCounts = countryList.groupBy(identity).map(p => (p._1, p._2.size))
+    lazy val stateOrProvinceCounts = stateOrProvinceList.groupBy(identity).map(p => (p._1, p._2.size))
+
+    def totalCount(s: String) = cityCounts.getOrElse(s, 0) + countryCounts.getOrElse(s, 0) + stateOrProvinceCounts.getOrElse(s, 0)
 
     def main(args: Array[String]) = {
       val lcities = provinceToCityMap.get("Louisiana").get

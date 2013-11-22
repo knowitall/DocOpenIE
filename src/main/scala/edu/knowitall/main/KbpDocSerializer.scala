@@ -15,6 +15,7 @@ import edu.knowitall.repr.coref.CorefResolved
 import edu.knowitall.repr.ner.StanfordSerializableNERAnnotated
 import edu.knowitall.repr.bestmention.BestMentionResolvedDocument
 import edu.knowitall.tool.bestmention.BestMentionsFound
+import edu.knowitall.tool.document.OpenIENoCorefDocumentExtractor
 import edu.knowitall.tool.document.OpenIECorefExpandedDocumentExtractor
 import edu.knowitall.tool.link.OpenIELinked
 import java.io.File
@@ -54,7 +55,7 @@ object KbpDocSerializer {
 }
 
 object FullDocSerializer {
-  
+
   def main(args: Array[String]): Unit = {
 
     val parsedDocuments = new File(args(0)).listFiles.map(KbpDocSerializer.deserializeFromFile)
@@ -64,9 +65,9 @@ object FullDocSerializer {
     if (!outputDir.exists()) outputDir.mkdir()
 
     val docExtractor = new OpenIECorefExpandedDocumentExtractor()
-    
+
     val extractedDocuments = parsedDocuments.map(docExtractor.extract).map(ExtractedDocument.convert)
-    
+
     for (ed <- extractedDocuments) {
       val outFile = new File(outputDir, ed.docId + ".bin")
       using(new ObjectOutputStream(new FileOutputStream(outFile))) { oos =>
