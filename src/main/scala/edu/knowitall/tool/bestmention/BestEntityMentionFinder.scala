@@ -725,8 +725,6 @@ object BestMentionFinderOriginalAlgorithm {
   object NewTipsterData {
 
     private val tipsterFile = new File("/scratch/usr/rbart/git/UWELExpanded/src/main/resources/edu/knowitall/entitylinking/extended/utils/TipsterGazetteer.txt")
-    private val cityProvincePattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(PROVINCE.*""".r
-    private val cityCountryPattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(COUNTRY.*""".r
 
     sealed abstract class TipsterType(val name: String)
     object TipsterType {
@@ -751,7 +749,7 @@ object BestMentionFinderOriginalAlgorithm {
 
     private val tipsterRegex = ("" +
       """([^\(\)]+)""" + // the location's name, a string without parentheses (possibly with whitespace, we trim later)
-      """\(\W*(CITY|PROVINCE|COUNTRY)""" + // city, province, or country - the type of the location
+      """\((CITY|PROVINCE|COUNTRY)""" + // city, province, or country - the type of the location
       """(?:\s(\d+))?\)""").r // an optional uniqueness number (and the closing paren)
 
     // pairs of (containee, container)
