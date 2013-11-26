@@ -749,8 +749,8 @@ object BestMentionFinderOriginalAlgorithm {
       source.getLines.flatMap { line =>
         val matches = tipsterRegex.findAllMatchIn(line).sliding(2, 1)
         matches.map {
-          case Seq(m1, m2) => ContainedLocation(m1.group(1), TipsterType(m1.group(2)), m2.group(1), TipsterType(m2.group(2)))
-          case Seq(m) => TopLocation(m.group(1), TipsterType(m.group(2)))
+          case Seq(m1, m2) => ContainedLocation(m1.group(1).trim(), TipsterType(m1.group(2).trim()), m2.group(1).trim(), TipsterType(m2.group(2).trim()))
+          case Seq(m) => TopLocation(m.group(1).trim(), TipsterType(m.group(2).trim()))
         }
       }.toList
     }
