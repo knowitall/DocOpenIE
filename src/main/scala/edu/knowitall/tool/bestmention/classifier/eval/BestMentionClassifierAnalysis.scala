@@ -24,24 +24,24 @@ object BestMentionClassifierAnalysis {
     val classifier = BestMentionClassifier(trainingReader)
     val confidences = {
       testReader.labelledResolvedBestMentions
-      .map({ case (labelled, index, doc) => (classifier.apply(labelled.item), labelled, index, doc)})
+      .map(labelled => (classifier.apply(labelled.item), labelled))
       .toSeq
     }
-    val sortedConfs = confidences.sortBy({case(conf, labelled, index, doc) => -conf})
+    val sortedConfs = confidences.sortBy({case (conf, labelled) => -conf})
     val precs = precRecall(sortedConfs.map(_._2.label))
     val zipped = {
       precs.zip(sortedConfs)
-      .map({case (prec, (conf, labelled, index, doc)) => (prec, conf, labelled, index, doc)})
+      .map({case (prec, (conf, labelled)) => (prec, conf, labelled)})
       .toSeq
     }
     // sort for display purposes - by conf but put all the correct answers at the top (for p/r curve)
-    val sortedZipped = zipped.sortBy({ case(prec, conf, labelled, index, doc) => if (labelled.label) Double.MinValue else -conf })
-    val dataOutLines = sortedZipped.map { case(prec, conf, labelled, index, doc) =>
+    val sortedZipped = zipped.sortBy({ case(prec, conf, labelled) => if (labelled.label) Double.MinValue else -conf })
+    val dataOutLines = sortedZipped.map { case(prec, conf, labelled) =>
       Seq(
         "%.03f" format prec,               //precision
         "%.03f" format conf,               //confidence
         if (labelled.label) "1" else "0"   //label (1 or 0)
-      ).mkString("\t") + ResolvedBestMentionWriter.writeRBM(index, labelled.item, doc)
+      ).mkString("\t") + ResolvedBestMentionWriter.writeRBM(labelled.item)
     }
     using(new java.io.PrintWriter(prOutFile)) { prOut =>
       removeSawtooth(precs)

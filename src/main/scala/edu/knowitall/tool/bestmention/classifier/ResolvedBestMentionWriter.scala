@@ -5,6 +5,7 @@ import edu.knowitall.repr.document.DocId
 import edu.knowitall.repr.document.Sentenced
 import edu.knowitall.repr.sentence.Sentence
 import edu.knowitall.repr.bestmention._
+import edu.knowitall.repr.coref.CorefResolved
 import edu.knowitall.main.FullDocSerializer
 import edu.knowitall.common.Resource.using
 import BestMentionHelper.{targetContext, bestContext}
@@ -30,11 +31,11 @@ object ResolvedBestMentionWriter {
     }
   }
   
-  type RBMDoc = Document with Sentenced[_ <: Sentence] with BestMentionResolvedDocument with DocId
+  type RBMDoc = Document with Sentenced[_ <: Sentence] with BestMentionResolvedDocument with CorefResolved with DocId
   
   def writeAll(doc: RBMDoc): Seq[String] = {
     doc.bestMentions.zipWithIndex.map { case (rbm, index) =>
-      writeRBM(index, rbm, doc)
+      writeRBM(RBMTuple(rbm, index, doc))
     }
   }
   
@@ -48,13 +49,16 @@ object ResolvedBestMentionWriter {
       "doc id"
     )
   
-  def writeRBM(index: Int, rbm: ResolvedBestMention, doc: RBMDoc): String = {
+  def writeRBM(rbmt: RBMTuple): String = {
     
     def noTabs(s: String) = s.replaceAll("\t", " ").replaceAll("\n", " ")
     
     def twoPlaces(d: Double) = "%.02f" format d
     
-    val featureVector = BestMentionFeatures.vectorize(rbm).map(twoPlaces)
+    val featureVector = BestMentionFeatures.vectorize(rbmt).map(twoPlaces)
+    
+    val rbm = rbmt.bem
+    val doc = rbmt.doc
     
     val fields = Seq(
       "",
@@ -62,7 +66,7 @@ object ResolvedBestMentionWriter {
       rbm.bestMention,
       targetContext(rbm, doc),
       bestContext(rbm, doc)) ++ featureVector ++ Seq(
-      index.toString,
+      rbmt.index.toString,
       doc.docId
     )
     fields.map(noTabs).mkString("\t")
