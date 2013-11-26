@@ -58,7 +58,7 @@ object FullDocSerializer {
 
   def main(args: Array[String]): Unit = {
 
-    val parsedDocuments = new File(args(0)).listFiles.map(KbpDocSerializer.deserializeFromFile).filter(_.docId == "LTW_ENG_20081201.0013.LDC2009T13")
+    val parsedDocuments = new File(args(0)).listFiles.map(KbpDocSerializer.deserializeFromFile)
 
     val outputDir = new File(args(1))
 
