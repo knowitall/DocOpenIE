@@ -199,7 +199,7 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
     for(cluster <- doc.clusters){
       val mentions = cluster.mentions
       val links = getUniqueLinksInCluster(cluster,doc.links)
-      val bestMentions = getUniquebestMentionsInCluster(cluster, doc.bestMentions)
+      val bestMentions = getUniquebestMentionsInCluster(cluster, doc.allBestMentions)
       var best: Option[CorefResolvedBestMention] = None
       if(debug){
 	      println("Cluster number " + clusterIndex)
@@ -241,7 +241,7 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
       val links = doc.links
       val clusters = doc.clusters
       val sentences = doc.sentences
-      val bestMentions = corefExpandedbestMentions
+      val allBestMentions = corefExpandedbestMentions
       val docId = d.docId
       val NERAnnotatedDoc = d.NERAnnotatedDoc
     }

@@ -25,7 +25,7 @@ trait BestMentionFinder {
   def findBestEntity(
       entity: Entity,
       docText: String,
-      namedEntityCollection: NamedEntityCollection): Option[ResolvedBestMention]
+      namedEntityCollection: NamedEntityCollection): ResolvedBestMention
 }
 
 trait BestMentionsFound extends BestMentionResolvedDocument {
@@ -90,8 +90,8 @@ trait BestMentionsFound extends BestMentionResolvedDocument {
 
   //iterate over entities and use bestMentionFinder.findBestEntity to
   // find the bestMentions in the Document
-  lazy val bestMentions = {
-    documentEntities.flatMap(entity => {
+  lazy val allBestMentions = {
+    documentEntities.map(entity => {
       bestMentionFinder.findBestEntity(entity, this.text, this.namedEntityCollection)
     })
   }
@@ -103,8 +103,8 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
 
   println("Instantiating new BestMentionFinderOriginalAlgorithm object")
   //where the custom rules should go
-  override def findBestEntity(entity: Entity, docText: String, namedEntityCollection: NamedEntityCollection): Option[ResolvedBestMention] = {
-    val bestMention: ResolvedBestMention = entity.entityType match {
+  override def findBestEntity(entity: Entity, docText: String, namedEntityCollection: NamedEntityCollection): ResolvedBestMention = {
+    entity.entityType match {
       case Organization => { findBestOrganizationString(entity, namedEntityCollection.organizations, docText, namedEntityCollection) }
       case Location => {
         findBestLocationString(entity, namedEntityCollection.locations, docText)
@@ -123,12 +123,6 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
           tryOrg
         }
       }
-    }
-
-    if (bestMention.bestMention != entity.cleanText) {
-      Some(bestMention)
-    } else {
-      None
     }
   }
 

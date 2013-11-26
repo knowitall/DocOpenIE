@@ -52,7 +52,11 @@ trait BestMentionResolvedDocument {
 
   type B <: ResolvedBestMention
 
-  def bestMentions: Seq[B];
+  def allBestMentions: Seq[B];
+  
+  def bestMentions: Seq[B] = allBestMentions.filter { bm =>
+    !bm.isInstanceOf[IdentityBestMention] && bm.bestMention != bm.text
+  }
 
   /**
    * Get links contained between the character interval
