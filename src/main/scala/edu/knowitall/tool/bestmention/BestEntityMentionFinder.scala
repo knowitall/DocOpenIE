@@ -303,7 +303,7 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
       //that state or country
       val containerMap = scala.collection.mutable.Map[Entity, Int]()
       for (cs <- candidateStrings) {
-        if (locationContainsLocation(cs.name, originalString)) {
+        if (locationContainsLocation(cs.name, originalString) && !sameLocationType(cs.name, originalString)) {
           if (cs.name != originalString && cs.name != "United States") {
             if (containerMap.contains(cs)) {
               containerMap += ((cs, containerMap.get(cs).get + 1))
@@ -432,8 +432,13 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
       return false
     }
   }
+}
 
-  private def sameLocationType(location1: String, location2: String): Boolean = {
+object BestMentionFinderOriginalAlgorithm {
+
+  def distinctNameCount(entities: Seq[Entity]): Double = 1.0 / entities.map(_.name).distinct.size
+
+  def sameLocationType(location1: String, location2: String): Boolean = {
     val cities = BestMentionFinderOriginalAlgorithm.TipsterData.cities
     val stateOrProvinces = BestMentionFinderOriginalAlgorithm.TipsterData.stateOrProvinces
     val countries = BestMentionFinderOriginalAlgorithm.TipsterData.countries
@@ -444,12 +449,7 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
     Seq(cities, stateOrProvinces, countries)
     .exists(set => set.contains(l1lc) && set.contains(l2lc))
   }
-}
-
-object BestMentionFinderOriginalAlgorithm {
-
-  def distinctNameCount(entities: Seq[Entity]): Int = entities.map(_.name).distinct.size
-
+  
   def locationContainsLocation(container: String, contained: String): Boolean = {
     val cities = BestMentionFinderOriginalAlgorithm.TipsterData.cities
     val stateOrProvinces = BestMentionFinderOriginalAlgorithm.TipsterData.stateOrProvinces

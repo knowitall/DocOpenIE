@@ -1,4 +1,5 @@
-package edu.knowitall.tool.bestmention.classifier
+package edu.knowitall.tool.bestmention
+package classifier
 
 import edu.knowitall.tool.conf.FeatureSet
 import edu.knowitall.tool.conf.Feature
@@ -100,8 +101,10 @@ object BestMentionHelper {
   type RBMDoc = Document with Sentenced[_ <: Sentence] with BestMentionResolvedDocument with DocId
 
   def bothStates(rbm: ContainerBestMention): Boolean = {
-    TipsterData.stateOrProvinces.contains(rbm.containerEntity.cleanText.toLowerCase) &&
-    TipsterData.stateOrProvinces.contains(rbm.target.cleanText.toLowerCase)
+    val oneIsALocation = rbm.target.entityType == Location || rbm.containerEntity.entityType == Location
+    oneIsALocation &&
+    BestMentionFinderOriginalAlgorithm
+    .sameLocationType(rbm.target.cleanText.toLowerCase, rbm.containerEntity.cleanText.toLowerCase)
   }
 
   def stateContainsCity(rbm: ContainerBestMention): Boolean = {
