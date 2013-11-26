@@ -60,7 +60,23 @@ object BestMentionFeatures extends FeatureSet[RBMTuple, Double] {
   )
 
   val docFeatures = List(
-    BMFeature("Ambiguous Candidate Count", _.bem.candidateCount)
+    BMFeature("Ambiguous Candidate Count", _.bem.candidateCount),
+    BMFeature("Coref Cluster Agrees", { case RBMTuple(bem, _, doc) =>
+        if (bem.isInstanceOf[FullResolvedBestMention]) {
+          val fbm = bem.asInstanceOf[FullResolvedBestMention]
+          val targetMentions = doc.mentionsBetween(bem.offset, bem.offset + bem.text.length)
+          val bestMentions = doc.mentionsBetween(fbm.bestEntity.offset, fbm.bestEntity.offset + fbm.bestEntity.text.length)
+          val targetClusters = targetMentions.flatMap(doc.cluster).toSet
+          val bestClusters = bestMentions.flatMap(doc.cluster)
+          val agree = bestClusters.exists(targetClusters.contains)
+          val disagree = !agree && bestClusters.nonEmpty
+          if (agree) 1.0
+          else if (disagree) -1.0
+          else 0.0
+      } else {
+        0.0
+      }
+    })
   )
 
   val tipsterFeatures = List(
@@ -81,10 +97,10 @@ object BestMentionFeatures extends FeatureSet[RBMTuple, Double] {
         countryContainsCity(cbm)
       } else false
     }),
-    BMFeature("Target and Best are Both States", toDouble { case RBMTuple(bem, _, doc) =>
+    BMFeature("Target and Best could be same location type", toDouble { case RBMTuple(bem, _, doc) =>
       if (bem.isInstanceOf[ContainerBestMention]) {
         val cbm = bem.asInstanceOf[ContainerBestMention]
-        bothStates(cbm)
+        sameLocType(cbm)
       } else false
     })
   )
@@ -107,9 +123,7 @@ object BestMentionHelper {
   // a document that a resolved-best-mention might come from... hence R.B.M. Doc
   type RBMDoc = Document with Sentenced[_ <: Sentence] with BestMentionResolvedDocument with DocId
 
-  def bothStates(rbm: ContainerBestMention): Boolean = {
-    val oneIsALocation = rbm.target.entityType == Location || rbm.containerEntity.entityType == Location
-    oneIsALocation &&
+  def sameLocType(rbm: ContainerBestMention): Boolean = {
     BestMentionFinderOriginalAlgorithm
     .sameLocationType(rbm.target.cleanText.toLowerCase, rbm.containerEntity.cleanText.toLowerCase)
   }
