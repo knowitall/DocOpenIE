@@ -79,7 +79,7 @@ case class LinkResolvedBestMention(m: Mention, link: FreeBaseLink, cluster: Ment
 
 object LinkResolvedBestMention {
   private val locRegex = "location|place|city|country|state|province".r
-  private val orgRegex = "business|corporation|company".r
+  private val orgRegex = "business|corporation|company|organization".r
   private val perRegex = "people|person".r
   
   def linkEntity(link: FreeBaseLink) = Entity(link.text, link.offset, link.name, guessType(link))

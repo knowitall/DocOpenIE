@@ -57,6 +57,7 @@ object BestMentionFeatures extends FeatureSet[RBMTuple, Double] {
 
   val typeFeatures = List(
     BMFeature("is Coref BestMention", toDouble(_.bem.isInstanceOf[Coref])),
+    BMFeature("is Linked BestMention", toDouble(_.bem.isInstanceOf[LinkResolvedBestMention])),
     BMFeature("is Coref+Identity BestMention", toDouble(_.bem.isInstanceOf[CorefIdentityBestMention]))
   )
 
