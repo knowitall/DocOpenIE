@@ -55,8 +55,7 @@ trait BestMentionResolvedDocument {
   def allBestMentions: Seq[B];
   
   def bestMentions: Seq[B] = allBestMentions.filter { bm =>
-    val notIdentity = !bm.isInstanceOf[IdentityBestMention] || bm.isInstanceOf[Coref]
-    notIdentity && bm.bestMention != bm.text
+    !bm.isInstanceOf[IdentityBestMention] && bm.bestMention != bm.text
   }
 
   /**

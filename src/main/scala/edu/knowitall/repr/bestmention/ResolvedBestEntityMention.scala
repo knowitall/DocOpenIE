@@ -60,7 +60,9 @@ object CorefResolvedBestMention {
     CorefResolvedBestMentionImpl(target, bestMention, cluster, candidateCount)
 } 
 
-case class CorefIdentityBestMention(target: Entity, cluster: MentionCluster) extends IdentityBestMention with Coref
+case class CorefIdentityBestMention(target: Entity, bestEntity: Entity, cluster: MentionCluster) extends FullResolvedBestMention with Coref {
+  def candidateCount = 1
+}
 
 trait CorefFullResolvedBestMention extends CorefResolvedBestMention with FullResolvedBestMention
 object CorefFullResolvedBestMention {
