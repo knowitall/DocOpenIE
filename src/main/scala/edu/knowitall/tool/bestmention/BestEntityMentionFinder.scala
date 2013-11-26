@@ -18,7 +18,7 @@ import edu.stanford.nlp.ling.CoreAnnotations.NamedEntityTagAnnotation
 import java.io.File
 import scala.util.matching.Regex
 import com.rockymadden.stringmetric.similarity.JaroWinklerMetric
-
+import edu.knowitall.common.Resource.using
 
 trait BestMentionFinder {
 
@@ -544,6 +544,77 @@ object BestMentionFinderOriginalAlgorithm {
   }
 
   object TipsterData {
+    lazy val stateOrProvinces = {
+      val old = OldTipsterData.stateOrProvinces
+      val knew = NewTipsterData.provinceNameMap.keySet
+      requireSet(old, knew)
+      knew
+    }
+    def expandStateAbbreviation(abr: String, city: String): Option[String] = {
+      val old = OldTipsterData.expandStateAbbreviation(abr, city)
+      val knew = NewTipsterData.expandStateAbbreviation(abr, city)
+      require(old == knew)
+      knew
+    }
+    lazy val cities = {
+      val old = OldTipsterData.cities
+      val knew = NewTipsterData.cityNameMap.keySet
+      requireSet(old, knew)
+      knew
+    }
+    lazy val countries = {
+      val old = OldTipsterData.countries
+      val knew = NewTipsterData.countryNameMap.keySet
+      requireSet(old, knew)
+      knew
+    }
+    lazy val provinceCityMap = {
+      val old = OldTipsterData.provinceCityMap.mapValues(_.toSet).toMap
+      val knew = NewTipsterData.provinceCityMap.map { case (name, cities) =>
+        (name, cities.map(_.name).toSet)
+      }
+      requireMap(old, knew)
+      knew
+    }
+    lazy val countryCityMap = {
+      val old = OldTipsterData.countryCityMap.mapValues(_.toSet).toMap
+      val knew = NewTipsterData.countryCityMap.map { case (name, cities) =>
+        (name, cities.map(_.name).toSet)
+      }
+      requireMap(old, knew)
+      knew
+    }
+    def totalCount(s: String) = {
+      val old = OldTipsterData.totalCount(s)
+      val knew = NewTipsterData.totalCount(s)
+      require(old > knew)
+      knew
+    }
+    private def requireSet[T](s1: Set[T], s2: Set[T]): Unit = {
+      if (!s1.equals(s2)) {
+        val s1Diff = s1 &~ s2
+        val s2Diff = s2 &~ s1
+        System.err.println(s"old diff(${s1Diff.size}):" + s1Diff.mkString(", ").take(5))
+        System.err.println(s"new diff(${s2Diff.size}):" + s2Diff.mkString(", ").take(5))
+        throw new IllegalArgumentException("Sets not equal.")
+      }
+    }
+    private def requireMap[K,V](m1: Map[K,Set[V]], m2: Map[K,Set[V]]): Unit = {
+      if (!m1.equals(m2)) {
+        val m1Diff = m1 -- m2.keys
+        val m2Diff = m2 -- m1.keys
+        def ks(k: K, vs: Set[V]) = {
+          val vstr = vs.take(5).mkString(",")
+          s"[$k -> $vstr](${vs.size})"
+        }
+        System.err.println(s"old diff(${m1Diff.size}):" + m1Diff.map(kv=>(ks(kv._1, kv._2)).mkString(", ")))
+        System.err.println(s"new diff(${m2Diff.size}):" + m2Diff.map(kv=>(ks(kv._1, kv._2)).mkString(", ")))
+        throw new IllegalArgumentException("Sets not equal.")
+      }
+    }
+  }
+  
+  object OldTipsterData {
 
     private val tipsterFile = new File("/scratch/usr/rbart/git/UWELExpanded/src/main/resources/edu/knowitall/entitylinking/extended/utils/TipsterGazetteer.txt")
     private val cityProvincePattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(PROVINCE.*""".r
@@ -632,6 +703,118 @@ object BestMentionFinderOriginalAlgorithm {
         val citiesInState = provinceToCityMap.get(stateName.get)
         if (citiesInState.isEmpty) return None
         if (citiesInState.get.contains(city)) {
+          println("Transforming " + abr + " to " + stateName.get)
+          return Some((city + ", " + stateName.get))
+        } else return None
+      } else {
+        None
+      }
+    }
+  }
+
+  object NewTipsterData {
+
+    private val tipsterFile = new File("/scratch/usr/rbart/git/UWELExpanded/src/main/resources/edu/knowitall/entitylinking/extended/utils/TipsterGazetteer.txt")
+    private val cityProvincePattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(PROVINCE.*""".r
+    private val cityCountryPattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(COUNTRY.*""".r
+
+    sealed abstract class TipsterType(val name: String)
+    object TipsterType {
+      val typs = Seq(CITY, PROVINCE, COUNTRY)
+      def apply(s: String) = typs.find(_.name == s).getOrElse(OTHER)
+    }
+    case object CITY extends TipsterType("CITY")
+    case object PROVINCE extends TipsterType("PROVINCE")
+    case object COUNTRY extends TipsterType("COUNTRY")
+    case object OTHER extends TipsterType("OTHER")
+
+    sealed abstract class TipsterLocation(val name: String, val typ: TipsterType)
+    case class TopLocation(
+      override val name: String,
+      override val typ: TipsterType) extends TipsterLocation(name, typ)
+
+    case class ContainedLocation(
+      override val name: String,
+      override val typ: TipsterType,
+      val contName: String,
+      contTyp: TipsterType) extends TipsterLocation(name, typ)
+
+    private val tipsterRegex = ("" +
+      """([^\(\)]+)""" + // the location's name, a string without parentheses (possibly with whitespace, we trim later)
+      """\((CITY|PROVINCE|COUNTRY)""" + // city, province, or country - the type of the location
+      """(?:\s(\d+))?\)""").r // an optional uniqueness number (and the closing paren)
+
+    // pairs of (containee, container)
+    val tipsterLocations = using(io.Source.fromFile(tipsterFile)(io.Codec.ISO8859)) { source =>
+      source.getLines.flatMap { line =>
+        val matches = tipsterRegex.findAllMatchIn(line).sliding(2, 1)
+        matches.map {
+          case Seq(m1, m2) => ContainedLocation(m1.group(1), TipsterType(m1.group(2)), m2.group(1), TipsterType(m2.group(2)))
+          case Seq(m) => TopLocation(m.group(1), TipsterType(m.group(2)))
+        }
+      }.toList
+    }
+
+    System.err.println(s"Loaded ${tipsterLocations.size} tipster locations.")
+
+    def nameMap(t: TipsterType) = tipsterLocations.filter(_.typ == t).toSeq.groupBy(_.name.toLowerCase)
+
+    val cityNameMap = nameMap(CITY)
+    val provinceNameMap = nameMap(PROVINCE)
+    val countryNameMap = nameMap(COUNTRY)
+
+    def containmentMap(containerType: TipsterType, containeeType: TipsterType) = {
+      tipsterLocations.collect {
+        case loc @ ContainedLocation(_, containeeType, _, containerType) => loc
+      }.toSeq.groupBy(_.contName)
+    }
+
+    val provinceCityMap = containmentMap(PROVINCE, CITY)
+
+    val countryCityMap = containmentMap(COUNTRY, CITY)
+
+    def allCitiesInProvince(provinceName: String) = provinceCityMap.getOrElse(provinceName, Nil)
+
+    def allCitiesInCountry(countryName: String) = countryCityMap.getOrElse(countryName, Nil)
+
+    def sameLocationType(location1: String, location2: String): Boolean = {
+
+      val l1lc = location1.toLowerCase()
+      val l2lc = location2.toLowerCase()
+
+      Seq(cityNameMap, provinceNameMap, countryNameMap)
+        .exists(map => map.contains(l1lc) && map.contains(l2lc))
+    }
+
+    def locationContainsLocation(container: String, contained: String): Boolean = {
+
+      val cer = container.toLowerCase
+      val ced = contained.toLowerCase
+
+      // contained by a country?
+      def containedByCountry = allCitiesInCountry(cer).exists(_.name.toLowerCase == ced)
+
+      def containedByProvince = allCitiesInProvince(cer).exists(_.name.toLowerCase == ced)
+
+      containedByCountry || containedByProvince
+    }
+
+    def totalCount(s: String) = (cityNameMap.getOrElse(s, Nil) ++ countryNameMap.getOrElse(s, Nil) ++ provinceNameMap.getOrElse(s, Nil)).size
+
+    def main(args: Array[String]) = {
+      val lcities = allCitiesInProvince("louisiana")
+      for (c <- lcities) {
+        println(c)
+      }
+    }
+
+    def expandStateAbbreviation(abr: String, city: String): Option[String] = {
+      if (BestMentionFinderOriginalAlgorithm.AbbreviationData.abbreviationMap.contains(abr)) {
+        val stateName = BestMentionFinderOriginalAlgorithm.AbbreviationData.abbreviationMap.get(abr)
+        if (stateName.isEmpty) return None
+        val citiesInState = allCitiesInProvince(stateName.get)
+        if (citiesInState.isEmpty) return None
+        if (citiesInState.exists(_.name == city)) {
           println("Transforming " + abr + " to " + stateName.get)
           return Some((city + ", " + stateName.get))
         } else return None
