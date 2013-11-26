@@ -99,11 +99,11 @@ object BestMentionFeatures extends FeatureSet[RBMTuple, Double] {
         countryContainsCity(cbm)
       } else false
     }),
-    BMFeature("Target and Best could be same location type", toDouble { case RBMTuple(bem, _, doc) =>
+    BMFeature("Target and Best location type similarity", { case RBMTuple(bem, _, doc) =>
       if (bem.isInstanceOf[ContainerBestMention]) {
         val cbm = bem.asInstanceOf[ContainerBestMention]
-        sameLocType(cbm)
-      } else false
+        locSimilarity(cbm)
+      } else 0.0
     })
   )
 
@@ -125,9 +125,9 @@ object BestMentionHelper {
   // a document that a resolved-best-mention might come from... hence R.B.M. Doc
   type RBMDoc = Document with Sentenced[_ <: Sentence] with BestMentionResolvedDocument with DocId
 
-  def sameLocType(rbm: ContainerBestMention): Boolean = {
+  def locSimilarity(rbm: ContainerBestMention): Double = {
     BestMentionFinderOriginalAlgorithm
-    .sameLocationType(rbm.target.cleanText.toLowerCase, rbm.containerEntity.cleanText.toLowerCase)
+    .locationTypeSimilarity(rbm.target.cleanText.toLowerCase, rbm.containerEntity.cleanText.toLowerCase)
   }
 
   def stateContainsCity(rbm: ContainerBestMention): Boolean = {

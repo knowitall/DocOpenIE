@@ -432,7 +432,11 @@ object BestMentionFinderOriginalAlgorithm {
 
   def distinctNameCount(entities: Seq[Entity]): Double = 1.0 / entities.map(_.name).distinct.size
 
-  def sameLocationType(location1: String, location2: String): Boolean = {
+  /**
+   * 3.0 if loc1 and loc2 are both cities, provinces, and states.
+   * 2.0 if loc1 and loc2 only share two possible types. Etc.  
+   */
+  def locationTypeSimilarity(location1: String, location2: String): Double = {
     val cities = BestMentionFinderOriginalAlgorithm.TipsterData.cities
     val stateOrProvinces = BestMentionFinderOriginalAlgorithm.TipsterData.stateOrProvinces
     val countries = BestMentionFinderOriginalAlgorithm.TipsterData.countries
@@ -441,8 +445,14 @@ object BestMentionFinderOriginalAlgorithm {
     val l2lc = location2.toLowerCase()
 
     Seq(cities, stateOrProvinces, countries)
-    .exists(set => set.contains(l1lc) && set.contains(l2lc))
+    .map(set => set.contains(l1lc) && set.contains(l2lc))
+    .map {
+      case true => 1.0
+      case false => 0.0
+    }.sum
   }
+  
+  def sameLocationType(loc1: String, loc2: String) = locationTypeSimilarity(loc1, loc2) > 0
   
   def locationContainsLocation(container: String, contained: String): Boolean = {
     val cities = BestMentionFinderOriginalAlgorithm.TipsterData.cities
