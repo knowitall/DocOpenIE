@@ -545,73 +545,73 @@ object BestMentionFinderOriginalAlgorithm {
 
   object TipsterData {
     lazy val stateOrProvinces = {
-      val old = OldTipsterData.stateOrProvinces
+//      val old = OldTipsterData.stateOrProvinces
       val knew = NewTipsterData.provinceNameMap.keySet
-      requireSet(old, knew)
+//      requireSet(old, knew)
       knew
     }
     def expandStateAbbreviation(abr: String, city: String): Option[String] = {
-      val old = OldTipsterData.expandStateAbbreviation(abr, city)
+//      val old = OldTipsterData.expandStateAbbreviation(abr, city)
       val knew = NewTipsterData.expandStateAbbreviation(abr, city)
-      require(old == knew)
+//      require(old == knew)
       knew
     }
     lazy val cities = {
-      val old = OldTipsterData.cities
+//      val old = OldTipsterData.cities
       val knew = NewTipsterData.cityNameMap.keySet
-      requireSet(old, knew)
+//      requireSet(old, knew)
       knew
     }
     lazy val countries = {
-      val old = OldTipsterData.countries
+//      val old = OldTipsterData.countries
       val knew = NewTipsterData.countryNameMap.keySet
-      requireSet(old, knew)
+//      requireSet(old, knew)
       knew
     }
     lazy val provinceCityMap = {
-      val old = OldTipsterData.provinceCityMap.mapValues(_.toSet).toMap
+//      val old = OldTipsterData.provinceCityMap.mapValues(_.toSet).toMap
       val knew = NewTipsterData.provinceCityMap.map { case (name, cities) =>
         (name, cities.map(_.name).toSet)
       }
-      requireMap(old, knew)
+//      requireMap(old, knew)
       knew
     }
     lazy val countryCityMap = {
-      val old = OldTipsterData.countryCityMap.mapValues(_.toSet).toMap
+//      val old = OldTipsterData.countryCityMap.mapValues(_.toSet).toMap
       val knew = NewTipsterData.countryCityMap.map { case (name, cities) =>
         (name, cities.map(_.name).toSet)
       }
-      requireMap(old, knew)
+//      requireMap(old, knew)
       knew
     }
     def totalCount(s: String) = {
       val old = OldTipsterData.totalCount(s)
       val knew = NewTipsterData.totalCount(s)
-      require(old > knew)
+//      require(old > knew)
       knew
     }
-    private def requireSet[T](s1: Set[T], s2: Set[T]): Unit = {
-      if (!s1.equals(s2)) {
-        val s1Diff = s1 &~ s2
-        val s2Diff = s2 &~ s1
-        System.err.println(s"old diff(${s1Diff.size}):" + s1Diff.mkString(", ").take(5))
-        System.err.println(s"new diff(${s2Diff.size}):" + s2Diff.mkString(", ").take(5))
-        //throw new IllegalArgumentException("Sets not equal.")
-      }
-    }
-    private def requireMap[K,V](m1: Map[K,Set[V]], m2: Map[K,Set[V]]): Unit = {
-      if (!m1.equals(m2)) {
-        val m1Diff = m1 -- m2.keys
-        val m2Diff = m2 -- m1.keys
-        def ks(k: K, vs: Set[V]) = {
-          val vstr = vs.take(5).mkString(",")
-          s"[$k -> $vstr](${vs.size})"
-        }
-        System.err.println(s"old diff(${m1Diff.size}):" + m1Diff.map(kv=>(ks(kv._1, kv._2))).mkString(", "))
-        System.err.println(s"new diff(${m2Diff.size}):" + m2Diff.map(kv=>(ks(kv._1, kv._2))).mkString(", "))
-        //throw new IllegalArgumentException("Sets not equal.")
-      }
-    }
+//    private def requireSet[T](s1: Set[T], s2: Set[T]): Unit = {
+//      if (!s1.equals(s2)) {
+//        val s1Diff = s1 &~ s2
+//        val s2Diff = s2 &~ s1
+//        System.err.println(s"old diff(${s1Diff.size}):" + s1Diff.mkString(", ").take(5))
+//        System.err.println(s"new diff(${s2Diff.size}):" + s2Diff.mkString(", ").take(5))
+//        //throw new IllegalArgumentException("Sets not equal.")
+//      }
+//    }
+//    private def requireMap[K,V](m1: Map[K,Set[V]], m2: Map[K,Set[V]]): Unit = {
+//      if (!m1.equals(m2)) {
+//        val m1Diff = m1 -- m2.keys
+//        val m2Diff = m2 -- m1.keys
+//        def ks(k: K, vs: Set[V]) = {
+//          val vstr = vs.take(5).mkString(",")
+//          s"[$k -> $vstr](${vs.size})"
+//        }
+//        System.err.println(s"old diff(${m1Diff.size}):" + m1Diff.map(kv=>(ks(kv._1, kv._2))).mkString(", "))
+//        System.err.println(s"new diff(${m2Diff.size}):" + m2Diff.map(kv=>(ks(kv._1, kv._2))).mkString(", "))
+//        //throw new IllegalArgumentException("Sets not equal.")
+//      }
+//    }
   }
   
   object OldTipsterData {
@@ -752,7 +752,7 @@ object BestMentionFinderOriginalAlgorithm {
           case Seq(m1, m2) => ContainedLocation(m1.group(1).trim(), TipsterType(m1.group(2).trim()), m2.group(1).trim(), TipsterType(m2.group(2).trim()))
           case Seq(m) => TopLocation(m.group(1).trim(), TipsterType(m.group(2).trim()))
         }
-      }.toList
+      }.toSet
     }
 
     System.err.println(s"Loaded ${tipsterLocations.size} tipster locations.")
