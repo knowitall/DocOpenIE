@@ -32,16 +32,19 @@ trait CandidateCount {
   def candidateCount: Double
 } 
 
-
-case class IdentityBestMention(target: Entity) extends ResolvedBestMention {
-  def bestMention = target.cleanText
-  def candidateCount = 0
-}
-
 trait ResolvedBestMention extends BestMention with TargetResolved with CandidateCount
 object ResolvedBestMention {
   case class ResolvedBestMentionImpl(target: Entity, bestMention: String, candidateCount: Double) extends ResolvedBestMention
   def apply(target: Entity, bestMention: String, candidateCount: Double) = ResolvedBestMentionImpl(target, bestMention, candidateCount)
+}
+
+trait IdentityBestMention extends ResolvedBestMention {
+  def bestMention = target.cleanText
+  def candidateCount = 1
+}
+object IdentityBestMention {
+  case class IdentityBestMentionImpl(target: Entity) extends IdentityBestMention
+  def apply(target: Entity): IdentityBestMention = IdentityBestMentionImpl(target)
 }
 
 trait FullResolvedBestMention extends ResolvedBestMention with BestResolved
@@ -56,6 +59,8 @@ object CorefResolvedBestMention {
   def apply(target: Entity, bestMention: String, cluster: MentionCluster, candidateCount: Double) = 
     CorefResolvedBestMentionImpl(target, bestMention, cluster, candidateCount)
 } 
+
+case class CorefIdentityBestMention(target: Entity, cluster: MentionCluster) extends IdentityBestMention with Coref
 
 trait CorefFullResolvedBestMention extends CorefResolvedBestMention with FullResolvedBestMention
 object CorefFullResolvedBestMention {

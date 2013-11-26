@@ -143,6 +143,8 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
       if (bestMention.isInstanceOf[FullResolvedBestMention]) {
         val fbm = bestMention.asInstanceOf[FullResolvedBestMention]
         CorefFullResolvedBestMention(target, fbm.bestEntity, cluster, bestMention.candidateCount)
+      } else if (bestMention.isInstanceOf[IdentityBestMention]) {
+        CorefIdentityBestMention(target, cluster)
       } else {
         CorefResolvedBestMention(target, bestMention.bestMention, cluster, bestMention.candidateCount)
       }
@@ -154,8 +156,6 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
       LinkResolvedBestMention(m, link, cluster, 1)
     }
   }
-
-
 
   def extract(d: InputDoc): OutputDoc = {
 
