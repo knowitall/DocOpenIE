@@ -142,7 +142,7 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
   def newCorefMentions(cluster: MentionCluster, bestMention: ResolvedBestMention) = {
     for(m <- cluster.mentions; 
         if m.isPronoun;
-        if (personalPronouns.contains(m.text.toLowerCase) ^ bestMention.target.entityType != Person) yield {
+        if (personalPronouns.contains(m.text.toLowerCase) ^ bestMention.target.entityType != Person)) yield {
       val target = Entity(m.text,m.offset,m.text, bestMention.target.entityType)
       if (bestMention.isInstanceOf[FullResolvedBestMention]) {
         val fbm = bestMention.asInstanceOf[FullResolvedBestMention]
