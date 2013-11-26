@@ -303,7 +303,7 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
       //that state or country
       val containerMap = scala.collection.mutable.Map[Entity, Int]()
       for (cs <- candidateStrings) {
-        if (locationContainsLocation(cs.name, originalString) && !sameLocationType(cs.name, originalString)) {
+        if (locationContainsLocation(cs.name, originalString)) {
           if (cs.name != originalString && cs.name != "United States") {
             if (containerMap.contains(cs)) {
               containerMap += ((cs, containerMap.get(cs).get + 1))
@@ -554,178 +554,29 @@ object BestMentionFinderOriginalAlgorithm {
   }
 
   object TipsterData {
-    lazy val stateOrProvinces = {
-//      val old = OldTipsterData.stateOrProvinces
-      val knew = NewTipsterData.provinceNameMap.keySet
-//      requireSet(old, knew)
-      knew
+    lazy val stateOrProvinces = NewTipsterData.provinceNameMap.keySet
+    
+    def expandStateAbbreviation(abr: String, city: String): Option[String] =
+      NewTipsterData.expandStateAbbreviation(abr, city)
+
+    lazy val cities = NewTipsterData.cityNameMap.keySet
+
+    lazy val countries = NewTipsterData.countryNameMap.keySet
+
+    lazy val provinceCityMap = NewTipsterData.provinceCityMap.map { case (name, cities) =>
+      (name, cities.map(_.name).toSet)
     }
-    def expandStateAbbreviation(abr: String, city: String): Option[String] = {
-//      val old = OldTipsterData.expandStateAbbreviation(abr, city)
-      val knew = NewTipsterData.expandStateAbbreviation(abr, city)
-//      require(old == knew)
-      knew
+    lazy val countryCityMap = NewTipsterData.countryCityMap.map { case (name, cities) =>
+      (name, cities.map(_.name).toSet)
     }
-    lazy val cities = {
-//      val old = OldTipsterData.cities
-      val knew = NewTipsterData.cityNameMap.keySet
-//      requireSet(old, knew)
-      knew
-    }
-    lazy val countries = {
-//      val old = OldTipsterData.countries
-      val knew = NewTipsterData.countryNameMap.keySet
-//      requireSet(old, knew)
-      knew
-    }
-    lazy val provinceCityMap = {
-//      val old = OldTipsterData.provinceCityMap.mapValues(_.toSet).toMap
-      val knew = NewTipsterData.provinceCityMap.map { case (name, cities) =>
-        (name, cities.map(_.name).toSet)
-      }
-//      requireMap(old, knew)
-      knew
-    }
-    lazy val countryCityMap = {
-//      val old = OldTipsterData.countryCityMap.mapValues(_.toSet).toMap
-      val knew = NewTipsterData.countryCityMap.map { case (name, cities) =>
-        (name, cities.map(_.name).toSet)
-      }
-//      requireMap(old, knew)
-      knew
-    }
-    def totalCount(s: String) = {
-      val old = OldTipsterData.totalCount(s)
-      val knew = NewTipsterData.totalCount(s)
-//      require(old > knew)
-      knew
-    }
-//    private def requireSet[T](s1: Set[T], s2: Set[T]): Unit = {
-//      if (!s1.equals(s2)) {
-//        val s1Diff = s1 &~ s2
-//        val s2Diff = s2 &~ s1
-//        System.err.println(s"old diff(${s1Diff.size}):" + s1Diff.mkString(", ").take(5))
-//        System.err.println(s"new diff(${s2Diff.size}):" + s2Diff.mkString(", ").take(5))
-//        //throw new IllegalArgumentException("Sets not equal.")
-//      }
-//    }
-//    private def requireMap[K,V](m1: Map[K,Set[V]], m2: Map[K,Set[V]]): Unit = {
-//      if (!m1.equals(m2)) {
-//        val m1Diff = m1 -- m2.keys
-//        val m2Diff = m2 -- m1.keys
-//        def ks(k: K, vs: Set[V]) = {
-//          val vstr = vs.take(5).mkString(",")
-//          s"[$k -> $vstr](${vs.size})"
-//        }
-//        System.err.println(s"old diff(${m1Diff.size}):" + m1Diff.map(kv=>(ks(kv._1, kv._2))).mkString(", "))
-//        System.err.println(s"new diff(${m2Diff.size}):" + m2Diff.map(kv=>(ks(kv._1, kv._2))).mkString(", "))
-//        //throw new IllegalArgumentException("Sets not equal.")
-//      }
-//    }
-  }
-  
-  object OldTipsterData {
-
-    private val tipsterFile = new File("/scratch/usr/rbart/git/UWELExpanded/src/main/resources/edu/knowitall/entitylinking/extended/utils/TipsterGazetteer.txt")
-    private val cityProvincePattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(PROVINCE.*""".r
-    private val cityCountryPattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(COUNTRY.*""".r
-
-    var cityList = List[String]()
-    var stateOrProvinceList = List[String]()
-    var countryList = List[String]()
-
-    val provinceCityMap = scala.collection.mutable.Map[String, Set[String]]()
-    val countryCityMap = scala.collection.mutable.Map[String, Set[String]]()
-
-    // read in tipster lines with latin encoding so as not to get errors.
-    scala.io.Source.fromFile(tipsterFile.getPath())(scala.io.Codec.ISO8859).getLines.foreach(line => {
-      val cityProvinceMatch = cityProvincePattern.findFirstMatchIn(line)
-      if (cityProvinceMatch.isDefined) {
-        val city = cityProvinceMatch.get.group(1).trim()
-        val province = cityProvinceMatch.get.group(2).trim()
-
-        if (provinceCityMap.contains(province)) {
-          val oldSet = provinceCityMap.get(province)
-          provinceCityMap += ((province, oldSet.get + city))
-        } else {
-          provinceCityMap += ((province, Set(city)))
-        }
-      }
-
-      val cityCountryMatch = cityCountryPattern.findFirstMatchIn(line)
-      if (cityCountryMatch.isDefined) {
-        val city = cityCountryMatch.get.group(1).trim()
-        val country = cityCountryMatch.get.group(2).trim()
-
-        if (countryCityMap.contains(country)) {
-          val oldSet = countryCityMap.get(country)
-          countryCityMap += ((country, oldSet.get + city))
-        } else {
-          countryCityMap += ((country, Set(city)))
-        }
-      }
-
-      val pairs = line.split("\\)")
-      val pairSplits = { for (p <- pairs) yield p.split("\\(") }
-      for (nameAndLocationType <- pairSplits) {
-        if (nameAndLocationType.size == 2) {
-          val name = nameAndLocationType(0).trim().toLowerCase()
-          val locationType = nameAndLocationType(1).split(" ")(0).trim()
-          locationType match {
-            case "CITY" => {
-              cityList ::= name
-            }
-            case "COUNTRY" => {
-              countryList ::= name
-            }
-            case "PROVINCE" => {
-              stateOrProvinceList ::= name
-            }
-            case _ => {}
-          }
-        }
-      }
-
-    })
-
-    lazy val provinceToCityMap = provinceCityMap.toMap
-    lazy val cities = cityList.distinct.toSet
-    lazy val countries = countryList.distinct.toSet
-    lazy val stateOrProvinces = stateOrProvinceList.distinct.toSet
-
-    lazy val cityCounts = cityList.groupBy(identity).map(p => (p._1, p._2.size))
-    lazy val countryCounts = countryList.groupBy(identity).map(p => (p._1, p._2.size))
-    lazy val stateOrProvinceCounts = stateOrProvinceList.groupBy(identity).map(p => (p._1, p._2.size))
-
-    def totalCount(s: String) = cityCounts.getOrElse(s, 0) + countryCounts.getOrElse(s, 0) + stateOrProvinceCounts.getOrElse(s, 0)
-
-    def main(args: Array[String]) = {
-      val lcities = provinceToCityMap.get("Louisiana").get
-      for (c <- lcities) {
-        println(c)
-      }
-    }
-
-    def expandStateAbbreviation(abr: String, city: String): Option[String] = {
-      if (BestMentionFinderOriginalAlgorithm.AbbreviationData.abbreviationMap.contains(abr)) {
-        val stateName = BestMentionFinderOriginalAlgorithm.AbbreviationData.abbreviationMap.get(abr)
-        if (stateName.isEmpty) return None
-        val citiesInState = provinceToCityMap.get(stateName.get)
-        if (citiesInState.isEmpty) return None
-        if (citiesInState.get.contains(city)) {
-          println("Transforming " + abr + " to " + stateName.get)
-          return Some((city + ", " + stateName.get))
-        } else return None
-      } else {
-        None
-      }
-    }
+    
+    def totalCount(s: String) = NewTipsterData.totalCount(s)
   }
 
   object NewTipsterData {
 
     private val tipsterFile = new File("/scratch/usr/rbart/git/UWELExpanded/src/main/resources/edu/knowitall/entitylinking/extended/utils/TipsterGazetteer.txt")
-
+    
     sealed abstract class TipsterType(val name: String)
     object TipsterType {
       val typs = Seq(CITY, PROVINCE, COUNTRY)
@@ -751,7 +602,7 @@ object BestMentionFinderOriginalAlgorithm {
       """([^\(\)]+)""" + // the location's name, a string without parentheses (possibly with whitespace, we trim later)
       """\((CITY|PROVINCE|COUNTRY)""" + // city, province, or country - the type of the location
       """(?:\s(\d+))?\)""").r // an optional uniqueness number (and the closing paren)
-
+      
     // pairs of (containee, container)
     val tipsterLocations = using(io.Source.fromFile(tipsterFile)(io.Codec.ISO8859)) { source =>
       source.getLines.flatMap { line =>

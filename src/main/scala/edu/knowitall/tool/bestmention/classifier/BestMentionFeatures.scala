@@ -44,8 +44,6 @@ case class BMFeature(
   override def apply(that: RBMTuple): Double = this.func(that)
 }
 
-
-
 object BestMentionFeatures extends FeatureSet[RBMTuple, Double] {
 
   import BMFeature.toDouble
@@ -58,27 +56,11 @@ object BestMentionFeatures extends FeatureSet[RBMTuple, Double] {
   })
 
   val typeFeatures = List(
-    //BMFeature("is ContainmentBestMention", toDouble(_.isInstanceOf[ContainmentBestMention])),
-    //BMFeature("is ContainerBestMention", toDouble(_.isInstanceOf[ContainerBestMention])),
     BMFeature("is CorefResolvedBestMention", toDouble(_.bem.isInstanceOf[CorefResolvedBestMention]))
-    //BMFeature("is FullResolvedBestMention", toDouble(_.isInstanceOf[FullResolvedBestMention])),
-    //BMFeature("is LinkResolvedBestMention", toDouble(_.isInstanceOf[LinkResolvedBestMention])),
-//    BMFeature("Link Score", { bem =>
-//      if (bem.isInstanceOf[LinkResolvedBestMention])
-//        bem.asInstanceOf[LinkResolvedBestMention].link.score
-//      else 0.0
-//    })
   )
 
   val docFeatures = List(
     BMFeature("Ambiguous Candidate Count", _.bem.candidateCount)
-    //BMFeature("Char Proximity", { bem => BestMentionHelper.charProximity(bem, 2500) }), // avg doc length is about 2500
-//    BMFeature("Target Precedes Best", toDouble { bem =>
-//      bem.isInstanceOf[FullResolvedBestMention] && bem.target.offset < bem.asInstanceOf[FullResolvedBestMention].bestEntity.offset
-//    }),
-//    BMFeature("Target After Best", toDouble { bem =>
-//      bem.isInstanceOf[FullResolvedBestMention] && bem.target.offset > bem.asInstanceOf[FullResolvedBestMention].bestEntity.offset
-//    })
   )
 
   val tipsterFeatures = List(
@@ -121,7 +103,6 @@ object BestMentionHelper {
 
   import edu.knowitall.tool.bestmention.BestMentionFinderOriginalAlgorithm.locationContainsLocation
   import edu.knowitall.tool.bestmention.BestMentionFinderOriginalAlgorithm.TipsterData
-
 
   // a document that a resolved-best-mention might come from... hence R.B.M. Doc
   type RBMDoc = Document with Sentenced[_ <: Sentence] with BestMentionResolvedDocument with DocId
