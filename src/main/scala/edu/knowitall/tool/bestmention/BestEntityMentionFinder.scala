@@ -345,7 +345,13 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
             // size of "candidates" in this scope
             // containment relationship features
             // was abbreviation expanded
-            ContainmentBestMention(entity, containedMap(containerEntity), containerEntity, distinctNameCount(candidates.keys.toSeq))
+            val contained = containedMap(containerEntity)
+            if (entity.cleanText.toLowerCase != containerEntity.cleanText.toLowerCase && contained.cleanText.toLowerCase != containerEntity.cleanText.toLowerCase) {
+              ContainmentBestMention(entity, contained, containerEntity, distinctNameCount(candidates.keys.toSeq))
+            }
+            else {
+              IdentityBestMention(entity)
+            }
           }
           case None =>
             IdentityBestMention(entity)
@@ -354,7 +360,11 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
         //sort by distance to original string
         val containers = containerMap.keys.toList
         val sortedContainerStrings = sortCandidateStringsByProximity(containers, entity.offset)
-        ContainerBestMention(entity, sortedContainerStrings.head, distinctNameCount(containers))
+        if (sortedContainerStrings.head.cleanText.toLowerCase != entity.cleanText.toLowerCase) {
+          ContainerBestMention(entity, sortedContainerStrings.head, distinctNameCount(containers))
+        } else {
+          IdentityBestMention(entity)
+        }
       }
     } else {
       val candidate = candidates.head
