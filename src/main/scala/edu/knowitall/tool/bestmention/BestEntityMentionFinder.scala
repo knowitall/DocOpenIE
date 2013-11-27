@@ -18,14 +18,14 @@ import edu.stanford.nlp.ling.CoreAnnotations.NamedEntityTagAnnotation
 import java.io.File
 import scala.util.matching.Regex
 import com.rockymadden.stringmetric.similarity.JaroWinklerMetric
-
+import edu.knowitall.common.Resource.using
 
 trait BestMentionFinder {
 
   def findBestEntity(
       entity: Entity,
       docText: String,
-      namedEntityCollection: NamedEntityCollection): Option[ResolvedBestMention]
+      namedEntityCollection: NamedEntityCollection): ResolvedBestMention
 }
 
 trait BestMentionsFound extends BestMentionResolvedDocument {
@@ -90,8 +90,8 @@ trait BestMentionsFound extends BestMentionResolvedDocument {
 
   //iterate over entities and use bestMentionFinder.findBestEntity to
   // find the bestMentions in the Document
-  lazy val bestMentions = {
-    documentEntities.flatMap(entity => {
+  lazy val allBestMentions = {
+    documentEntities.map(entity => {
       bestMentionFinder.findBestEntity(entity, this.text, this.namedEntityCollection)
     })
   }
@@ -103,8 +103,8 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
 
   println("Instantiating new BestMentionFinderOriginalAlgorithm object")
   //where the custom rules should go
-  override def findBestEntity(entity: Entity, docText: String, namedEntityCollection: NamedEntityCollection): Option[ResolvedBestMention] = {
-    val bestMention: ResolvedBestMention = entity.entityType match {
+  override def findBestEntity(entity: Entity, docText: String, namedEntityCollection: NamedEntityCollection): ResolvedBestMention = {
+    entity.entityType match {
       case Organization => { findBestOrganizationString(entity, namedEntityCollection.organizations, docText, namedEntityCollection) }
       case Location => {
         findBestLocationString(entity, namedEntityCollection.locations, docText)
@@ -123,12 +123,6 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
           tryOrg
         }
       }
-    }
-
-    if (bestMention.bestMention != entity.cleanText) {
-      Some(bestMention)
-    } else {
-      None
     }
   }
 
@@ -345,7 +339,13 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
             // size of "candidates" in this scope
             // containment relationship features
             // was abbreviation expanded
-            ContainmentBestMention(entity, containedMap(containerEntity), containerEntity, distinctNameCount(candidates.keys.toSeq))
+            val contained = containedMap(containerEntity)
+            if (entity.cleanText.toLowerCase != containerEntity.cleanText.toLowerCase && contained.cleanText.toLowerCase != containerEntity.cleanText.toLowerCase) {
+              ContainmentBestMention(entity, contained, containerEntity, distinctNameCount(candidates.keys.toSeq))
+            }
+            else {
+              IdentityBestMention(entity)
+            }
           }
           case None =>
             IdentityBestMention(entity)
@@ -354,7 +354,11 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
         //sort by distance to original string
         val containers = containerMap.keys.toList
         val sortedContainerStrings = sortCandidateStringsByProximity(containers, entity.offset)
-        ContainerBestMention(entity, sortedContainerStrings.head, distinctNameCount(containers))
+        if (sortedContainerStrings.head.cleanText.toLowerCase != entity.cleanText.toLowerCase) {
+          ContainerBestMention(entity, sortedContainerStrings.head, distinctNameCount(containers))
+        } else {
+          IdentityBestMention(entity)
+        }
       }
     } else {
       val candidate = candidates.head
@@ -404,10 +408,10 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
         nameMatch <- nameRegex.findAllMatchIn(rawDoc).toList;
         name = nameMatch.group(3);
         if (name.contains(originalString))
-      ) yield Entity(name, nameMatch.start(3), name, Location)
+      ) yield Entity(name, nameMatch.start(3), name, Person)
       if (nameList.nonEmpty) {
         val sortedNameList = sortCandidateStringsByProximity(nameList, entity.offset)
-        return FullResolvedBestMention(entity, sortedNameList.head, nameList.size)
+        return FullResolvedBestMention(entity, sortedNameList.head, distinctNameCount(nameList))
       }
     }
 
@@ -422,29 +426,34 @@ class BestMentionFinderOriginalAlgorithm extends BestMentionFinder {
       return false
     }
   }
-
-  private def sameLocationType(location1: String, location2: String): Boolean = {
-    val cities = BestMentionFinderOriginalAlgorithm.TipsterData.cities
-    val stateOrProvinces = BestMentionFinderOriginalAlgorithm.TipsterData.stateOrProvinces
-    val countries = BestMentionFinderOriginalAlgorithm.TipsterData.countries
-
-    if (cities.contains(location1.toLowerCase()) && cities.contains(location2.toLowerCase())) {
-      return true
-    }
-    if (stateOrProvinces.contains(location1.toLowerCase()) && stateOrProvinces.contains(location2.toLowerCase())) {
-      return true
-    }
-    if (countries.contains(location1.toLowerCase()) && countries.contains(location2.toLowerCase())) {
-      return true
-    }
-    return false
-  }
 }
 
 object BestMentionFinderOriginalAlgorithm {
 
-  def distinctNameCount(entities: Seq[Entity]): Int = entities.map(_.name).distinct.size
+  def distinctNameCount(entities: Seq[Entity]): Double = 1.0 / entities.map(_.name).distinct.size
 
+  /**
+   * 3.0 if loc1 and loc2 are both cities, provinces, and states.
+   * 2.0 if loc1 and loc2 only share two possible types. Etc.  
+   */
+  def locationTypeSimilarity(location1: String, location2: String): Double = {
+    val cities = BestMentionFinderOriginalAlgorithm.TipsterData.cities
+    val stateOrProvinces = BestMentionFinderOriginalAlgorithm.TipsterData.stateOrProvinces
+    val countries = BestMentionFinderOriginalAlgorithm.TipsterData.countries
+
+    val l1lc = location1.toLowerCase()
+    val l2lc = location2.toLowerCase()
+
+    Seq(cities, stateOrProvinces, countries)
+    .map(set => set.contains(l1lc) && set.contains(l2lc))
+    .map {
+      case true => 1.0
+      case false => 0.0
+    }.sum
+  }
+  
+  def sameLocationType(loc1: String, loc2: String) = locationTypeSimilarity(loc1, loc2) > 0
+  
   def locationContainsLocation(container: String, contained: String): Boolean = {
     val cities = BestMentionFinderOriginalAlgorithm.TipsterData.cities
     val stateOrProvinces = BestMentionFinderOriginalAlgorithm.TipsterData.stateOrProvinces
@@ -549,82 +558,114 @@ object BestMentionFinderOriginalAlgorithm {
   }
 
   object TipsterData {
+    lazy val stateOrProvinces = NewTipsterData.provinceNameMap.keySet
+    
+    def expandStateAbbreviation(abr: String, city: String): Option[String] =
+      NewTipsterData.expandStateAbbreviation(abr, city)
+
+    lazy val cities = NewTipsterData.cityNameMap.keySet
+
+    lazy val countries = NewTipsterData.countryNameMap.keySet
+
+    lazy val provinceCityMap = NewTipsterData.provinceCityMap.map { case (name, cities) =>
+      (name, cities.map(_.name).toSet)
+    }
+    lazy val countryCityMap = NewTipsterData.countryCityMap.map { case (name, cities) =>
+      (name, cities.map(_.name).toSet)
+    }
+    
+    def totalCount(s: String) = NewTipsterData.totalCount(s)
+  }
+
+  object NewTipsterData {
 
     private val tipsterFile = new File("/scratch/usr/rbart/git/UWELExpanded/src/main/resources/edu/knowitall/entitylinking/extended/utils/TipsterGazetteer.txt")
-    private val cityProvincePattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(PROVINCE.*""".r
-    private val cityCountryPattern = """([^\(]+)\(CITY.+?([^\(\)]+)\(COUNTRY.*""".r
+    
+    sealed abstract class TipsterType(val name: String)
+    object TipsterType {
+      val typs = Seq(CITY, PROVINCE, COUNTRY)
+      def apply(s: String) = typs.find(_.name == s).getOrElse(OTHER)
+    }
+    case object CITY extends TipsterType("CITY")
+    case object PROVINCE extends TipsterType("PROVINCE")
+    case object COUNTRY extends TipsterType("COUNTRY")
+    case object OTHER extends TipsterType("OTHER")
 
-    var cityList = List[String]()
-    var stateOrProvinceList = List[String]()
-    var countryList = List[String]()
+    sealed abstract class TipsterLocation(val name: String, val typ: TipsterType)
+    case class TopLocation(
+      override val name: String,
+      override val typ: TipsterType) extends TipsterLocation(name, typ)
 
-    val provinceCityMap = scala.collection.mutable.Map[String, Set[String]]()
-    val countryCityMap = scala.collection.mutable.Map[String, Set[String]]()
+    case class ContainedLocation(
+      override val name: String,
+      override val typ: TipsterType,
+      val contName: String,
+      contTyp: TipsterType) extends TipsterLocation(name, typ)
 
-    // read in tipster lines with latin encoding so as not to get errors.
-    scala.io.Source.fromFile(tipsterFile.getPath())(scala.io.Codec.ISO8859).getLines.foreach(line => {
-      val cityProvinceMatch = cityProvincePattern.findFirstMatchIn(line)
-      if (cityProvinceMatch.isDefined) {
-        val city = cityProvinceMatch.get.group(1).trim()
-        val province = cityProvinceMatch.get.group(2).trim()
-
-        if (provinceCityMap.contains(province)) {
-          val oldSet = provinceCityMap.get(province)
-          provinceCityMap += ((province, oldSet.get + city))
-        } else {
-          provinceCityMap += ((province, Set(city)))
+    private val tipsterRegex = ("" +
+      """([^\(\)]+)""" + // the location's name, a string without parentheses (possibly with whitespace, we trim later)
+      """\((CITY|PROVINCE|COUNTRY)""" + // city, province, or country - the type of the location
+      """(?:\s(\d+))?\)""").r // an optional uniqueness number (and the closing paren)
+      
+    // pairs of (containee, container)
+    val tipsterLocations = using(io.Source.fromFile(tipsterFile)(io.Codec.ISO8859)) { source =>
+      source.getLines.flatMap { line =>
+        val matches = tipsterRegex.findAllMatchIn(line).sliding(2, 1)
+        matches.map {
+          case Seq(m1, m2) => ContainedLocation(m1.group(1).trim(), TipsterType(m1.group(2).trim()), m2.group(1).trim(), TipsterType(m2.group(2).trim()))
+          case Seq(m) => TopLocation(m.group(1).trim(), TipsterType(m.group(2).trim()))
         }
-      }
+      }.toSet
+    }
 
-      val cityCountryMatch = cityCountryPattern.findFirstMatchIn(line)
-      if (cityCountryMatch.isDefined) {
-        val city = cityCountryMatch.get.group(1).trim()
-        val country = cityCountryMatch.get.group(2).trim()
+    System.err.println(s"Loaded ${tipsterLocations.size} tipster locations.")
 
-        if (countryCityMap.contains(country)) {
-          val oldSet = countryCityMap.get(country)
-          countryCityMap += ((country, oldSet.get + city))
-        } else {
-          countryCityMap += ((country, Set(city)))
-        }
-      }
+    def nameMap(t: TipsterType) = tipsterLocations.filter(_.typ == t).toSeq.groupBy(_.name.toLowerCase)
 
-      val pairs = line.split("\\)")
-      val pairSplits = { for (p <- pairs) yield p.split("\\(") }
-      for (nameAndLocationType <- pairSplits) {
-        if (nameAndLocationType.size == 2) {
-          val name = nameAndLocationType(0).trim().toLowerCase()
-          val locationType = nameAndLocationType(1).split(" ")(0).trim()
-          locationType match {
-            case "CITY" => {
-              cityList ::= name
-            }
-            case "COUNTRY" => {
-              countryList ::= name
-            }
-            case "PROVINCE" => {
-              stateOrProvinceList ::= name
-            }
-            case _ => {}
-          }
-        }
-      }
+    val cityNameMap = nameMap(CITY)
+    val provinceNameMap = nameMap(PROVINCE)
+    val countryNameMap = nameMap(COUNTRY)
 
-    })
+    def containmentMap(containerType: TipsterType, containeeType: TipsterType) = {
+      tipsterLocations.collect {
+        case loc @ ContainedLocation(_, containeeType, _, containerType) => loc
+      }.toSeq.groupBy(_.contName)
+    }
 
-    lazy val provinceToCityMap = provinceCityMap.toMap
-    lazy val cities = cityList.distinct.toSet
-    lazy val countries = countryList.distinct.toSet
-    lazy val stateOrProvinces = stateOrProvinceList.distinct.toSet
+    val provinceCityMap = containmentMap(PROVINCE, CITY)
 
-    lazy val cityCounts = cityList.groupBy(identity).map(p => (p._1, p._2.size))
-    lazy val countryCounts = countryList.groupBy(identity).map(p => (p._1, p._2.size))
-    lazy val stateOrProvinceCounts = stateOrProvinceList.groupBy(identity).map(p => (p._1, p._2.size))
+    val countryCityMap = containmentMap(COUNTRY, CITY)
 
-    def totalCount(s: String) = cityCounts.getOrElse(s, 0) + countryCounts.getOrElse(s, 0) + stateOrProvinceCounts.getOrElse(s, 0)
+    def allCitiesInProvince(provinceName: String) = provinceCityMap.getOrElse(provinceName, Nil)
+
+    def allCitiesInCountry(countryName: String) = countryCityMap.getOrElse(countryName, Nil)
+
+    def sameLocationType(location1: String, location2: String): Boolean = {
+
+      val l1lc = location1.toLowerCase()
+      val l2lc = location2.toLowerCase()
+
+      Seq(cityNameMap, provinceNameMap, countryNameMap)
+        .exists(map => map.contains(l1lc) && map.contains(l2lc))
+    }
+
+    def locationContainsLocation(container: String, contained: String): Boolean = {
+
+      val cer = container.toLowerCase
+      val ced = contained.toLowerCase
+
+      // contained by a country?
+      def containedByCountry = allCitiesInCountry(cer).exists(_.name.toLowerCase == ced)
+
+      def containedByProvince = allCitiesInProvince(cer).exists(_.name.toLowerCase == ced)
+
+      containedByCountry || containedByProvince
+    }
+
+    def totalCount(s: String) = (cityNameMap.getOrElse(s, Nil) ++ countryNameMap.getOrElse(s, Nil) ++ provinceNameMap.getOrElse(s, Nil)).size
 
     def main(args: Array[String]) = {
-      val lcities = provinceToCityMap.get("Louisiana").get
+      val lcities = allCitiesInProvince("louisiana")
       for (c <- lcities) {
         println(c)
       }
@@ -634,9 +675,9 @@ object BestMentionFinderOriginalAlgorithm {
       if (BestMentionFinderOriginalAlgorithm.AbbreviationData.abbreviationMap.contains(abr)) {
         val stateName = BestMentionFinderOriginalAlgorithm.AbbreviationData.abbreviationMap.get(abr)
         if (stateName.isEmpty) return None
-        val citiesInState = provinceToCityMap.get(stateName.get)
+        val citiesInState = allCitiesInProvince(stateName.get)
         if (citiesInState.isEmpty) return None
-        if (citiesInState.get.contains(city)) {
+        if (citiesInState.exists(_.name == city)) {
           println("Transforming " + abr + " to " + stateName.get)
           return Some((city + ", " + stateName.get))
         } else return None

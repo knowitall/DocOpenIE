@@ -7,7 +7,7 @@ import edu.knowitall.main.FullDocSerializer
 import edu.knowitall.common.Resource.using
 import edu.knowitall.common.Timing
 
-case class LabelledResolvedBestMentionReader(trainingFile: File, docsPath: File) extends Iterable[Labelled[ResolvedBestMention]] {
+case class LabelledResolvedBestMentionReader(trainingFile: File, docsPath: File) extends Iterable[Labelled[RBMTuple]] {
 
   require(trainingFile.exists() && trainingFile.isFile(), "Invalid training file")
   require(docsPath.exists() && docsPath.isDirectory(), "Invalid doc path")
@@ -35,12 +35,12 @@ case class LabelledResolvedBestMentionReader(trainingFile: File, docsPath: File)
       .flatMap { case (label, index, docId) =>
         docsMap.get(docId)
         .flatMap(_.bestMentions.lift(index))
-        .map(bm => (Labelled(label, bm), index, docsMap(docId)))
+        .map(bm => (Labelled(label, RBMTuple(bm, index, docsMap(docId)))))
       }
     }
     System.err.println(s"Loaded ${result.size} labeled examples in ${Timing.Seconds.format(nsResult)}.")
     result
   }
   
-  def iterator = labelledResolvedBestMentions.iterator.map(_._1)
+  def iterator = labelledResolvedBestMentions.iterator
 }

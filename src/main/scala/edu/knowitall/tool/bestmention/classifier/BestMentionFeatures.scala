@@ -1,82 +1,109 @@
-package edu.knowitall.tool.bestmention.classifier
+package edu.knowitall.tool.bestmention
+package classifier
 
 import edu.knowitall.tool.conf.FeatureSet
 import edu.knowitall.tool.conf.Feature
 import edu.knowitall.repr.bestmention.EntityType
 import edu.knowitall.repr.bestmention.EntityType._
 import edu.knowitall.repr.bestmention._
+import edu.knowitall.repr.document.Document
+import edu.knowitall.repr.document.DocId
+import edu.knowitall.repr.document.Sentenced
+import edu.knowitall.repr.sentence.Sentence
+import edu.knowitall.repr.coref.CorefResolved
 
-case class BMFeature(
-  override val name: String,
-  val func: ResolvedBestMention => Double)
-  extends Feature[ResolvedBestMention, Double](name) {
-
-  override def apply(that: ResolvedBestMention): Double = this.func(that)
-}
-
+import BMFeature._
 object BMFeature {
-  def toDouble(f: ResolvedBestMention => Boolean): ResolvedBestMention => Double = {
-    { bem => if (f(bem)) 1.0 else 0.0 }
+  type FeatureDoc = Document with CorefResolved with Sentenced[_ <: Sentence] with DocId
+  
+  def toDouble(f: RBMTuple => Boolean): RBMTuple => Double = {
+    { rbmt => if (f(rbmt)) 1.0 else 0.0 }
   }
 }
 
-object BestMentionFeatures extends FeatureSet[ResolvedBestMention, Double] {
+/** "Resolved Best-Mention tuple - 
+ *  a resolved best mention and the document it came from.
+ */
+trait RBMTuple {
+  type D <: FeatureDoc
+  def bem: ResolvedBestMention
+  def index: Int
+  def doc: D
+}
+object RBMTuple {
+  case class RBMTupleImpl(val bem: ResolvedBestMention, val index: Int, val doc: FeatureDoc) extends RBMTuple { type D = FeatureDoc }
+  def apply[D <: FeatureDoc](bem: ResolvedBestMention, index: Int, doc: D): RBMTuple = RBMTupleImpl(bem, index, doc)
+  def unapply(rbmt: RBMTuple): Option[(ResolvedBestMention, Int, FeatureDoc)] = Some((rbmt.bem, rbmt.index, rbmt.doc))
+}
+
+case class BMFeature(
+  override val name: String,
+  val func: RBMTuple => Double)
+  extends Feature[RBMTuple, Double](name) {
+
+  override def apply(that: RBMTuple): Double = this.func(that)
+}
+
+object BestMentionFeatures extends FeatureSet[RBMTuple, Double] {
 
   import BMFeature.toDouble
   import BestMentionHelper._
+  import BMFeature._
   import edu.knowitall.tool.bestmention.BestMentionFinderOriginalAlgorithm.TipsterData
 
-  def isTypeFeature(typ: EntityType): BMFeature = BMFeature(s"is a ${typ.name} rule", { bem: ResolvedBestMention =>
+  def isTypeFeature(typ: EntityType): BMFeature = BMFeature(s"is a ${typ.name} rule", { case RBMTuple(bem, _, doc) =>
     if (bem.target.entityType == typ) 1.0 else 0.0
   })
 
   val typeFeatures = List(
-    //BMFeature("is ContainmentBestMention", toDouble(_.isInstanceOf[ContainmentBestMention])),
-    //BMFeature("is ContainerBestMention", toDouble(_.isInstanceOf[ContainerBestMention])),
-    BMFeature("is CorefResolvedBestMention", toDouble(_.isInstanceOf[CorefResolvedBestMention]))
-    //BMFeature("is FullResolvedBestMention", toDouble(_.isInstanceOf[FullResolvedBestMention])),
-    //BMFeature("is LinkResolvedBestMention", toDouble(_.isInstanceOf[LinkResolvedBestMention])),
-//    BMFeature("Link Score", { bem =>
-//      if (bem.isInstanceOf[LinkResolvedBestMention])
-//        bem.asInstanceOf[LinkResolvedBestMention].link.score
-//      else 0.0
-//    })
+    BMFeature("is Coref BestMention", toDouble(_.bem.isInstanceOf[Coref])),
+    BMFeature("is Linked BestMention", toDouble(_.bem.isInstanceOf[LinkResolvedBestMention])),
+    BMFeature("is Coref+Identity BestMention", toDouble(_.bem.isInstanceOf[CorefIdentityBestMention]))
   )
 
   val docFeatures = List(
-    BMFeature("Ambiguous Candidate Count", _.candidateCount)
-    //BMFeature("Char Proximity", { bem => BestMentionHelper.charProximity(bem, 2500) }), // avg doc length is about 2500
-//    BMFeature("Target Precedes Best", toDouble { bem =>
-//      bem.isInstanceOf[FullResolvedBestMention] && bem.target.offset < bem.asInstanceOf[FullResolvedBestMention].bestEntity.offset
-//    }),
-//    BMFeature("Target After Best", toDouble { bem =>
-//      bem.isInstanceOf[FullResolvedBestMention] && bem.target.offset > bem.asInstanceOf[FullResolvedBestMention].bestEntity.offset
-//    })
+    BMFeature("Ambiguous Candidate Count", _.bem.candidateCount),
+    BMFeature("Coref Cluster Agrees", { case RBMTuple(bem, _, doc) =>
+        if (bem.isInstanceOf[FullResolvedBestMention]) {
+          val fbm = bem.asInstanceOf[FullResolvedBestMention]
+          val targetMentions = doc.mentionsBetween(bem.offset, bem.offset + bem.text.length)
+          val bestMentions = doc.mentionsBetween(fbm.bestEntity.offset, fbm.bestEntity.offset + fbm.bestEntity.text.length)
+          val targetClusters = targetMentions.flatMap(doc.cluster).toSet
+          val bestClusters = bestMentions.flatMap(doc.cluster)
+          val agree = bestClusters.exists(targetClusters.contains)
+          val disagree = !agree && bestClusters.nonEmpty
+          if (agree) 1.0
+          else if (disagree) -1.0
+          else 0.0
+      } else {
+        0.0
+      }
+    })
   )
 
   val tipsterFeatures = List(
-    BMFeature("Location Ambiguity Count", { bem =>
+    BMFeature("Location Ambiguity Count", { case RBMTuple(bem, _, doc) =>
       if (bem.isInstanceOf[ContainerBestMention])
         TipsterData.totalCount(bem.target.cleanText.toLowerCase).toDouble
       else 0.0
     }),
-    BMFeature("StateOrProvince contains City", toDouble { bem =>
+    BMFeature("StateOrProvince contains City", toDouble { case RBMTuple(bem, _, doc) =>
       if (bem.isInstanceOf[ContainerBestMention]) {
         val cbm = bem.asInstanceOf[ContainerBestMention]
         stateContainsCity(cbm)
       } else false
     }),
-    BMFeature("Country Contains City", toDouble { bem =>
+    BMFeature("Country Contains City", toDouble { case RBMTuple(bem, _, doc) =>
       if (bem.isInstanceOf[ContainerBestMention]) {
         val cbm = bem.asInstanceOf[ContainerBestMention]
         countryContainsCity(cbm)
       } else false
     }),
-    BMFeature("Target and Best are Both States", toDouble { bem =>
+    BMFeature("Target and Best location type similarity", { case RBMTuple(bem, _, doc) =>
       if (bem.isInstanceOf[ContainerBestMention]) {
         val cbm = bem.asInstanceOf[ContainerBestMention]
-        bothStates(cbm)
-      } else false
+        locSimilarity(cbm)
+      } else 0.0
     })
   )
 
@@ -95,13 +122,12 @@ object BestMentionHelper {
   import edu.knowitall.tool.bestmention.BestMentionFinderOriginalAlgorithm.locationContainsLocation
   import edu.knowitall.tool.bestmention.BestMentionFinderOriginalAlgorithm.TipsterData
 
-
   // a document that a resolved-best-mention might come from... hence R.B.M. Doc
   type RBMDoc = Document with Sentenced[_ <: Sentence] with BestMentionResolvedDocument with DocId
 
-  def bothStates(rbm: ContainerBestMention): Boolean = {
-    TipsterData.stateOrProvinces.contains(rbm.containerEntity.cleanText.toLowerCase) &&
-    TipsterData.stateOrProvinces.contains(rbm.target.cleanText.toLowerCase)
+  def locSimilarity(rbm: ContainerBestMention): Double = {
+    BestMentionFinderOriginalAlgorithm
+    .locationTypeSimilarity(rbm.target.cleanText.toLowerCase, rbm.containerEntity.cleanText.toLowerCase)
   }
 
   def stateContainsCity(rbm: ContainerBestMention): Boolean = {
@@ -114,7 +140,7 @@ object BestMentionHelper {
     TipsterData.countries.contains(rbm.containerEntity.cleanText.toLowerCase)
   }
 
-  def context(offset: Int, doc: RBMDoc): String = {
+  def context(offset: Int, doc: FeatureDoc): String = {
     findSent(offset, doc)
     .map(_.sentence.text)
     .getOrElse {
@@ -122,9 +148,9 @@ object BestMentionHelper {
     }
   }
 
-  def targetContext(rbm: ResolvedBestMention, doc: RBMDoc): String = context(rbm.target.offset, doc)
+  def targetContext(rbm: ResolvedBestMention, doc: FeatureDoc): String = context(rbm.target.offset, doc)
 
-  def bestContext(rbm: ResolvedBestMention, doc: RBMDoc): String = {
+  def bestContext(rbm: ResolvedBestMention, doc: FeatureDoc): String = {
     if (rbm.isInstanceOf[FullResolvedBestMention]) {
       context(rbm.asInstanceOf[FullResolvedBestMention].bestEntity.offset, doc)
     } else if (rbm.isInstanceOf[ContainerBestMention]) {
@@ -137,14 +163,14 @@ object BestMentionHelper {
     }
   }
 
-  private def findSent(offset: Int, doc: RBMDoc) = {
+  private def findSent(offset: Int, doc: FeatureDoc) = {
     doc.sentences.find { ds =>
       val end = ds.offset + ds.sentence.text.length
       offset > ds.offset && offset < end
     }
   }
 
-  private def docContext(offset: Int, doc: RBMDoc) = {
+  private def docContext(offset: Int, doc: FeatureDoc) = {
     doc.text.drop(offset - 40).take(80).replaceAll("\\s", " ")
   }
 

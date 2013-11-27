@@ -37,7 +37,7 @@ case class ExtractedDocument(
   override val annotationBytes: Array[Byte],
   override val links: List[FreeBaseLink],
   override val argContexts: List[ArgContext],
-  override val bestMentions: List[ResolvedBestMention],
+  override val allBestMentions: List[ResolvedBestMention],
   val docId: String)
 extends Document(text)
   with OpenIELinked

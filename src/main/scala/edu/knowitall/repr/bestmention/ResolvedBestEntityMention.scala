@@ -29,42 +29,49 @@ trait Coref {
 
 trait CandidateCount {
   this: BestMention =>
-  def candidateCount: Int
+  def candidateCount: Double
 } 
-
-
-case class IdentityBestMention(target: Entity) extends ResolvedBestMention {
-  def bestMention = target.cleanText
-  def candidateCount = 0
-}
 
 trait ResolvedBestMention extends BestMention with TargetResolved with CandidateCount
 object ResolvedBestMention {
-  case class ResolvedBestMentionImpl(target: Entity, bestMention: String, candidateCount: Int) extends ResolvedBestMention
-  def apply(target: Entity, bestMention: String, candidateCount: Int) = ResolvedBestMentionImpl(target, bestMention, candidateCount)
+  case class ResolvedBestMentionImpl(target: Entity, bestMention: String, candidateCount: Double) extends ResolvedBestMention
+  def apply(target: Entity, bestMention: String, candidateCount: Double) = ResolvedBestMentionImpl(target, bestMention, candidateCount)
+}
+
+trait IdentityBestMention extends ResolvedBestMention {
+  def bestMention = target.cleanText
+  def candidateCount = 1
+}
+object IdentityBestMention {
+  case class IdentityBestMentionImpl(target: Entity) extends IdentityBestMention
+  def apply(target: Entity): IdentityBestMention = IdentityBestMentionImpl(target)
 }
 
 trait FullResolvedBestMention extends ResolvedBestMention with BestResolved
 object FullResolvedBestMention {
-  case class FullResolvedBestMentionImpl(target: Entity, bestEntity: Entity, candidateCount: Int) extends FullResolvedBestMention
-  def apply(target: Entity, bestEntity: Entity, candidateCount: Int) = FullResolvedBestMentionImpl(target, bestEntity, candidateCount: Int)
+  case class FullResolvedBestMentionImpl(target: Entity, bestEntity: Entity, candidateCount: Double) extends FullResolvedBestMention
+  def apply(target: Entity, bestEntity: Entity, candidateCount: Double) = FullResolvedBestMentionImpl(target, bestEntity, candidateCount: Double)
 }
 
 trait CorefResolvedBestMention extends ResolvedBestMention with Coref
 object CorefResolvedBestMention {
-  case class CorefResolvedBestMentionImpl(target: Entity, bestMention: String, cluster: MentionCluster, candidateCount: Int) extends CorefResolvedBestMention
-  def apply(target: Entity, bestMention: String, cluster: MentionCluster, candidateCount: Int) = 
+  case class CorefResolvedBestMentionImpl(target: Entity, bestMention: String, cluster: MentionCluster, candidateCount: Double) extends CorefResolvedBestMention
+  def apply(target: Entity, bestMention: String, cluster: MentionCluster, candidateCount: Double) = 
     CorefResolvedBestMentionImpl(target, bestMention, cluster, candidateCount)
 } 
 
+case class CorefIdentityBestMention(target: Entity, bestEntity: Entity, cluster: MentionCluster) extends FullResolvedBestMention with Coref {
+  def candidateCount = 1
+}
+
 trait CorefFullResolvedBestMention extends CorefResolvedBestMention with FullResolvedBestMention
 object CorefFullResolvedBestMention {
-  case class CorefFullResolvedBestMentionImpl(target: Entity, bestEntity: Entity, cluster: MentionCluster, candidateCount: Int) extends CorefFullResolvedBestMention
-  def apply(target: Entity, bestEntity: Entity, cluster: MentionCluster, candidateCount: Int) = 
+  case class CorefFullResolvedBestMentionImpl(target: Entity, bestEntity: Entity, cluster: MentionCluster, candidateCount: Double) extends CorefFullResolvedBestMention
+  def apply(target: Entity, bestEntity: Entity, cluster: MentionCluster, candidateCount: Double) = 
     CorefFullResolvedBestMentionImpl(target, bestEntity, cluster, candidateCount)
 } 
 
-case class LinkResolvedBestMention(m: Mention, link: FreeBaseLink, cluster: MentionCluster, candidateCount: Int) extends CorefFullResolvedBestMention {
+case class LinkResolvedBestMention(m: Mention, link: FreeBaseLink, cluster: MentionCluster, candidateCount: Double) extends CorefFullResolvedBestMention {
   import LinkResolvedBestMention._
   val bestEntity = linkEntity(link)
   val target = Entity(m.text, m.offset, m.text, bestEntity.entityType)
@@ -72,7 +79,7 @@ case class LinkResolvedBestMention(m: Mention, link: FreeBaseLink, cluster: Ment
 
 object LinkResolvedBestMention {
   private val locRegex = "location|place|city|country|state|province".r
-  private val orgRegex = "business|corporation|company".r
+  private val orgRegex = "business|corporation|company|organization".r
   private val perRegex = "people|person".r
   
   def linkEntity(link: FreeBaseLink) = Entity(link.text, link.offset, link.name, guessType(link))
@@ -90,13 +97,13 @@ trait ContainerBestMention extends ResolvedBestMention {
   def bestMention = BestMentionFinderOriginalAlgorithm.locationCasing(text + ", " + containerEntity.name)
 }
 object ContainerBestMention {
-  case class ContainerBestMentionImpl(target: Entity, containerEntity: Entity, candidateCount: Int) extends ContainerBestMention
-  def apply(target: Entity, containerEntity: Entity, candidateCount: Int) =
+  case class ContainerBestMentionImpl(target: Entity, containerEntity: Entity, candidateCount: Double) extends ContainerBestMention
+  def apply(target: Entity, containerEntity: Entity, candidateCount: Double) =
     ContainerBestMentionImpl(target, containerEntity, candidateCount)
 }
 
 case class ContainmentBestMention(
-    target: Entity, containedEntity:Entity, containerEntity: Entity, candidateCount: Int) extends ContainerBestMention {
+    target: Entity, containedEntity:Entity, containerEntity: Entity, candidateCount: Double) extends ContainerBestMention {
   
   override def bestMention = containedEntity.name + ", " + containerEntity.name
 }
