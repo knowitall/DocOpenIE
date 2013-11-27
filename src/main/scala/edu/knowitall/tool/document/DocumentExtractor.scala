@@ -156,8 +156,12 @@ class OpenIECorefExpandedDocumentExtractor(val debug: Boolean = false) extends O
   }
 
   def newLinkMentions(cluster: MentionCluster, link: FreeBaseLink) = {
-    for(m <- cluster.mentions; if m.isPronoun) yield {
-      LinkResolvedBestMention(m, link, cluster, 1)
+    for(m <- cluster.mentions; 
+        if m.isPronoun;
+        linkBem = LinkResolvedBestMention(m, link, cluster, 1);
+        if (personalPronouns.contains(m.text.toLowerCase) ^ linkBem.bestEntity.entityType != Person)) 
+      yield {
+       linkBem
     }
   }
 
